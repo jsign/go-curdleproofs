@@ -31,16 +31,17 @@ func NewRand(seed uint64) (*Rand, error) {
 }
 
 func (cr *Rand) GetFr() (fr.Element, error) {
-	var byts [fr.Bytes]byte
-	if _, err := cr.rand.Read(byts[:]); err != nil {
-		return fr.Element{}, fmt.Errorf("get randomness: %s", err)
+	for {
+		var byts [fr.Bytes]byte
+		if _, err := cr.rand.Read(byts[:]); err != nil {
+			return fr.Element{}, fmt.Errorf("get randomness: %s", err)
 
+		}
+		var fe fr.Element
+		if err := fe.SetBytesCanonical(byts[:]); err == nil {
+			return fe, nil
+		}
 	}
-	var fe fr.Element
-	if err := fe.SetBytesCanonical(byts[:]); err != nil {
-		return fr.Element{}, fmt.Errorf("create fr from randomness: %s", err)
-	}
-	return fe, nil
 }
 
 func (cr *Rand) GetG1() (bls12381.G1Jac, error) {

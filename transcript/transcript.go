@@ -49,10 +49,11 @@ func (t *Transcript) AppendScalar(label []byte, scalar fr.Element) {
 
 func (t *Transcript) GetChallenge(label []byte) fr.Element {
 	for {
-		buf := t.challengeBytes(label, 64)
+		buf := t.challengeBytes(label, 32)
 		var challenge fr.Element
 		if err := challenge.SetBytesCanonical(buf); err == nil {
 			t.AppendScalar(label, challenge)
+			return challenge
 		}
 	}
 }

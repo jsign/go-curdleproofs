@@ -1,4 +1,4 @@
-package sameScalarArgument
+package samescalarargument
 
 import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"

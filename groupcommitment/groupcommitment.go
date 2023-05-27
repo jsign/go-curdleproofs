@@ -45,6 +45,6 @@ func (t *GroupCommitment) Mul(scalar fr.Element) GroupCommitment {
 	return ret
 }
 
-func (t *GroupCommitment) Eq(cm *GroupCommitment) bool {
+func (t GroupCommitment) Eq(cm *GroupCommitment) bool {
 	return t.T_1.Equal(&cm.T_1) && t.T_2.Equal(&cm.T_2)
 }
