@@ -27,3 +27,24 @@ func New(
 		T_2: T_2,
 	}
 }
+
+func (t *GroupCommitment) Add(cm GroupCommitment) GroupCommitment {
+	ret := GroupCommitment{}
+	ret.T_1.Set(&t.T_1)
+	ret.T_1.AddAssign(&cm.T_1)
+	ret.T_2.Set(&t.T_2)
+	ret.T_2.AddAssign(&cm.T_2)
+	return ret
+}
+
+func (t *GroupCommitment) Mul(scalar fr.Element) GroupCommitment {
+	bigIntScalar := common.FrToBigInt(&scalar)
+	ret := GroupCommitment{}
+	ret.T_1.ScalarMultiplication(&t.T_1, bigIntScalar)
+	ret.T_2.ScalarMultiplication(&t.T_2, bigIntScalar)
+	return ret
+}
+
+func (t *GroupCommitment) Eq(cm *GroupCommitment) bool {
+	return t.T_1.Equal(&cm.T_1) && t.T_2.Equal(&cm.T_2)
+}
