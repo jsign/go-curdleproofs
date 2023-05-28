@@ -27,16 +27,22 @@ func (t *Transcript) AppendMessage(label []byte, message []byte) {
 	t.strobe.AD(false, message)
 }
 
-func (t *Transcript) AppendPoint(label []byte, point bls12381.G1Jac) {
+func (t *Transcript) AppendPoint(label []byte, point *bls12381.G1Affine) {
 	var bytes bytes.Buffer
-	var affine bls12381.G1Affine
-	affine.FromJacobian(&point)
-	affineBytes := affine.Bytes()
+	affineBytes := point.Bytes()
 	bytes.Write(affineBytes[:])
 	t.AppendMessage(label, bytes.Bytes())
 }
 
-func (t *Transcript) AppendPoints(label []byte, points []bls12381.G1Jac) {
+func (t *Transcript) AppendPoints(label []byte, points ...*bls12381.G1Jac) {
+	for _, point := range points {
+		var affine bls12381.G1Affine
+		affine.FromJacobian(point)
+		t.AppendPoint(label, &affine)
+	}
+}
+
+func (t *Transcript) AppendPointsAffine(label []byte, points ...*bls12381.G1Affine) {
 	for _, point := range points {
 		t.AppendPoint(label, point)
 	}
