@@ -1,0 +1,5 @@
+package curdleproof
+
+func Prove() {
+	
+}
