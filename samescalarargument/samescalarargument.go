@@ -45,13 +45,13 @@ func Prove(
 	cm_A := groupcommitment.New(&crs.G_t, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(R, &bi_r_k), &r_a)
 	cm_B := groupcommitment.New(&crs.G_u, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(S, &bi_r_k), &r_b)
 
-	transcript.AppendPoints([]byte("sameexp_points"), []bls12381.G1Jac{
-		*R, *S,
-		cm_T.T_1, cm_T.T_2,
-		cm_U.T_1, cm_U.T_2,
-		cm_A.T_1, cm_A.T_2,
-		cm_B.T_1, cm_B.T_2,
-	})
+	transcript.AppendPoints([]byte("sameexp_points"),
+		R, S,
+		&cm_T.T_1, &cm_T.T_2,
+		&cm_U.T_1, &cm_U.T_2,
+		&cm_A.T_1, &cm_A.T_2,
+		&cm_B.T_1, &cm_B.T_2,
+	)
 
 	alpha := transcript.GetChallenge([]byte("same_scalar_alpha"))
 
@@ -77,13 +77,11 @@ func Verify(
 ) bool {
 	transcript.AppendPoints(
 		[]byte("sameexp_points"),
-		[]bls12381.G1Jac{
-			*R, *S,
-			cm_T.T_1, cm_T.T_2,
-			cm_U.T_1, cm_U.T_2,
-			proof.Cm_A.T_1, proof.Cm_A.T_2,
-			proof.Cm_B.T_1, proof.Cm_B.T_2,
-		},
+		R, S,
+		&cm_T.T_1, &cm_T.T_2,
+		&cm_U.T_1, &cm_U.T_2,
+		&proof.Cm_A.T_1, &proof.Cm_A.T_2,
+		&proof.Cm_B.T_1, &proof.Cm_B.T_2,
 	)
 	alpha := transcript.GetChallenge([]byte("same_scalar_alpha"))
 
