@@ -19,16 +19,16 @@ func TestProveVerify(t *testing.T) {
 	transcriptProver := transcript.New([]byte("same_scalar"))
 
 	var crs CRS
-	crs.G_t, err = rand.GetG1()
+	crs.G_t, err = rand.GetG1Jac()
 	require.NoError(t, err)
-	crs.G_u, err = rand.GetG1()
+	crs.G_u, err = rand.GetG1Jac()
 	require.NoError(t, err)
-	crs.H, err = rand.GetG1()
+	crs.H, err = rand.GetG1Jac()
 	require.NoError(t, err)
 
-	R, err := rand.GetG1()
+	R, err := rand.GetG1Jac()
 	require.NoError(t, err)
-	S, err := rand.GetG1()
+	S, err := rand.GetG1Jac()
 	require.NoError(t, err)
 
 	k, err := rand.GetFr()
