@@ -11,8 +11,9 @@ import (
 )
 
 type Rand struct {
-	rand  sha3.ShakeHash
-	genG1 bls12381.G1Jac
+	rand        sha3.ShakeHash
+	genG1Jac    bls12381.G1Jac
+	genG1Affine bls12381.G1Affine
 }
 
 func NewRand(seed uint64) (*Rand, error) {
@@ -23,17 +24,18 @@ func NewRand(seed uint64) (*Rand, error) {
 	if _, err := rand.Write(seedBytes[:]); err != nil {
 		return nil, fmt.Errorf("writing seed: %s", err)
 	}
-	g1Gen, _, _, _ := bls12381.Generators()
+	g1GenJac, _, g1GenAffine, _ := bls12381.Generators()
 	return &Rand{
-		rand:  rand,
-		genG1: g1Gen,
+		rand:        rand,
+		genG1Jac:    g1GenJac,
+		genG1Affine: g1GenAffine,
 	}, nil
 }
 
-func (cr *Rand) GetFr() (fr.Element, error) {
+func (r *Rand) GetFr() (fr.Element, error) {
 	for {
 		var byts [fr.Bytes]byte
-		if _, err := cr.rand.Read(byts[:]); err != nil {
+		if _, err := r.rand.Read(byts[:]); err != nil {
 			return fr.Element{}, fmt.Errorf("get randomness: %s", err)
 
 		}
@@ -44,15 +46,52 @@ func (cr *Rand) GetFr() (fr.Element, error) {
 	}
 }
 
-func (cr *Rand) GetG1() (bls12381.G1Jac, error) {
-	scalar, err := cr.GetFr()
+func (r *Rand) GetG1Jac() (bls12381.G1Jac, error) {
+	scalar, err := r.GetFr()
 	if err != nil {
 		return bls12381.G1Jac{}, fmt.Errorf("get random Fr: %s", err)
 	}
 	var scalarBigInt big.Int
 	scalar.BigInt(&scalarBigInt)
 	var res bls12381.G1Jac
-	res.ScalarMultiplication(&cr.genG1, &scalarBigInt)
+	res.ScalarMultiplication(&r.genG1Jac, &scalarBigInt)
 
 	return res, nil
+}
+
+func (r *Rand) GetG1Affine() (bls12381.G1Affine, error) {
+	scalar, err := r.GetFr()
+	if err != nil {
+		return bls12381.G1Affine{}, fmt.Errorf("get random Fr: %s", err)
+	}
+	var scalarBigInt big.Int
+	scalar.BigInt(&scalarBigInt)
+	var res bls12381.G1Affine
+	res.ScalarMultiplication(&r.genG1Affine, &scalarBigInt)
+
+	return res, nil
+}
+
+func (r *Rand) GetG1Affines(n int) ([]bls12381.G1Affine, error) {
+	var err error
+	ret := make([]bls12381.G1Affine, n)
+	for i := 0; i < n; i++ {
+		ret[i], err = r.GetG1Affine()
+		if err != nil {
+			return nil, fmt.Errorf("get random G1Affine: %s", err)
+		}
+	}
+	return ret, nil
+}
+
+func (r *Rand) GetFrs(n int) ([]fr.Element, error) {
+	var err error
+	ret := make([]fr.Element, n)
+	for i := 0; i < n; i++ {
+		ret[i], err = r.GetFr()
+		if err != nil {
+			return nil, fmt.Errorf("get random Fr: %s", err)
+		}
+	}
+	return ret, nil
 }

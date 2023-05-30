@@ -11,6 +11,8 @@ import (
 )
 
 func TestSameMultiscalarArgument(t *testing.T) {
+	t.Parallel()
+
 	n := 128
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)

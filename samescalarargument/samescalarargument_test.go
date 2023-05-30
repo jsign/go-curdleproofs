@@ -11,10 +11,10 @@ import (
 )
 
 func TestProveVerify(t *testing.T) {
+	t.Parallel()
+
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)
-
-	// Prove
 
 	transcriptProver := transcript.New([]byte("same_scalar"))
 
@@ -53,8 +53,8 @@ func TestProveVerify(t *testing.T) {
 		transcriptProver,
 		rand,
 	)
+	require.NoError(t, err)
 
-	// Reset the FS
 	transcriptVerifier := transcript.New([]byte("same_scalar"))
 	require.True(t, Verify(
 		&proof,

@@ -14,9 +14,11 @@ type Transcript struct {
 }
 
 func New(label []byte) *Transcript {
-	return &Transcript{
-		strobe: strobe.InitStrobe("", 128),
+	t := &Transcript{
+		strobe: strobe.InitStrobe("Merlin v1.0", 128),
 	}
+	t.AppendMessage([]byte("dom-sep"), label)
+	return t
 }
 
 func (t *Transcript) AppendMessage(label []byte, message []byte) {
@@ -70,5 +72,4 @@ func (t *Transcript) challengeBytes(label []byte, size uint32) []byte {
 	t.strobe.AD(true, label)
 	t.strobe.AD(true, dataLenBytes[:])
 	return t.strobe.PRF(int(size))
-
 }
