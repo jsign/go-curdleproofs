@@ -37,9 +37,9 @@ func TestMSMAccumulator(t *testing.T) {
 			require.NoError(t, err)
 
 			ma := New()
-			ma.AccumulateCheck(C1, x, A, rand)
+			err = ma.AccumulateCheck(C1, x, A, rand)
 			require.NoError(t, err)
-			ma.AccumulateCheck(C2, y, B, rand)
+			err = ma.AccumulateCheck(C2, y, B, rand)
 			require.NoError(t, err)
 
 			ok, err := ma.Verify()
