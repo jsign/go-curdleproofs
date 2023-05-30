@@ -281,7 +281,6 @@ func unfoldedScalars(
 		for k := lg_n - 1; k >= 0; k-- {
 			bit := i&(1<<(lg_n-k-1)) > 0
 			if bit {
-				fmt.Printf("i: %d, j: %d, bitstring[i][j]: %d\n", i, lg_n-k, k)
 				tmp.Mul(&tmp, &challenges[k])
 			}
 		}

@@ -11,14 +11,15 @@ import (
 
 func TestMSMAccumulator(t *testing.T) {
 	t.Parallel()
-	var err error
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
-
 	for n := range []int{1, 4, 8, 16} {
 		n := n
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			t.Parallel()
+
+			var err error
+			rand, err := common.NewRand(0)
+			require.NoError(t, err)
+
 			A, err := rand.GetG1Affines(n)
 			require.NoError(t, err)
 			x, err := rand.GetFrs(n)
