@@ -19,3 +19,16 @@ func FrToBigInt(r *fr.Element) *big.Int {
 func SplitAt[T any](s []T, n uint) ([]T, []T) {
 	return s[:n], s[n:]
 }
+
+func IPA(a []fr.Element, b []fr.Element) fr.Element {
+	if len(a) != len(b) {
+		panic("IPA: len(a) != len(b)")
+	}
+	var res fr.Element
+	for i := range a {
+		var term fr.Element
+		term.Mul(&a[i], &b[i])
+		res.Add(&res, &term)
+	}
+	return res
+}
