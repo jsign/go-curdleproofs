@@ -1,0 +1,230 @@
+package innerproductargument
+
+import (
+	"fmt"
+	"math/bits"
+
+	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/jsign/curdleproofs/common"
+	"github.com/jsign/curdleproofs/transcript"
+)
+
+type Proof struct {
+	Bc bls12381.G1Jac
+	Bd bls12381.G1Jac
+
+	LCs []bls12381.G1Jac
+	RCs []bls12381.G1Jac
+	LDs []bls12381.G1Jac
+	RDs []bls12381.G1Jac
+
+	c0 fr.Element
+	d0 fr.Element
+}
+
+func generateIPABlinders(rand common.Rand, cs []fr.Element, d []fr.Element) ([]fr.Element, []fr.Element, error) {
+	n := len(cs)
+
+	// Generate all the blinders but leave out two blinders from z
+	r, err := rand.GetFrs(n)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate rs: %s", err)
+	}
+	z, err := rand.GetFrs(n - 2)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate zs: %s", err)
+	}
+
+	// We have to solve a system of two linear equations over the two unknowns: z_{n-1} and z_n (the two blinders we left out)
+	// Consider first equation: <r, d> + <z, c> == 0
+	// <=> r_1 * d_1 + ... + r_n * d_n + z_1 * c_1 + ... + z_{n-1} * c_{n-1} + z_n * c_n == 0
+	// The last two products contain the unknowns whereas all the previous is a known quantity `omega` -- let's compute it below
+	omegaL := common.IPA(r, d)
+	omegaR := common.IPA(z[:n-2], cs[:n-2])
+	var omega fr.Element
+	omega.Add(&omegaL, &omegaR)
+	// Now let's consider the second equation: <r, z> == 0
+	// <=> r_1 * z_1 + ... r_{n-1} * z_{n-1} * r_n * z_n == 0
+	// Again, the last two products contain the unknowns whereas all the previous is a known quantity `delta` -- let's compute it below
+	delta := common.IPA(r[:n-2], z[:n-2])
+
+	// Solving the first equation for z_{n-1} we get:
+	//
+	//   z_{n-1} = - c_{n-1}^-1 (z_n * c_n + omega)
+	//
+	// then plugging the above z_{n-1} into the second equation, we get:
+	//
+	//   z_n = (r_{n-1} * c_{n-1}^-1 * omega - delta) / (- r_{n-1} * c_{n-1}^-1 * c_n + r_{n-1})
+	//
+	// We compute these values below:
+
+	var inv_c fr.Element
+	inv_c.Inverse(&cs[n-2])
+
+	var last_z, last_z_term1, last_z_term2 fr.Element
+	last_z_term1.Mul(&r[n-2], &inv_c)
+	last_z_term1.Mul(&last_z, &omega)
+	last_z_term1.Sub(&last_z, &delta)
+	last_z_term2.Neg(&r[n-2])
+	last_z_term2.Mul(&last_z_term2, &inv_c)
+	last_z_term2.Mul(&last_z_term2, &cs[n-1])
+	last_z_term2.Add(&last_z_term2, &r[n-1])
+	last_z_term2.Inverse(&last_z_term2)
+	last_z.Mul(&last_z_term1, &last_z_term2)
+
+	var penultimate_z, penultimate_z_term1, penultimate_z_term2 fr.Element
+	penultimate_z_term1.Neg(&inv_c)
+	penultimate_z_term2.Mul(&last_z, &cs[n-1])
+	penultimate_z_term2.Add(&penultimate_z_term2, &omega)
+	penultimate_z.Mul(&penultimate_z_term1, &penultimate_z_term2)
+
+	z = append(z, penultimate_z, last_z)
+
+	// Make sure the constraints were satisfied
+	checkTerm1 := common.IPA(r, d)
+	checkTerm2 := common.IPA(z, cs)
+	if !checkTerm1.Add(&checkTerm1, &checkTerm2).IsZero() {
+		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
+	}
+	check := common.IPA(r, z)
+	if !check.IsZero() {
+		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
+	}
+
+	return r, z, nil
+}
+
+func Prove(
+	crs CRS,
+
+	C bls12381.G1Jac,
+	D bls12381.G1Jac,
+	z fr.Element,
+
+	cs []fr.Element,
+	ds []fr.Element,
+
+	transcript *transcript.Transcript,
+	rand common.Rand,
+) (Proof, error) {
+	// TODO(jsign): sanity checks that cs and ds are the same length and a power of two.
+
+	// Step 1.
+	r_c, r_d, err := generateIPABlinders(rand, cs, ds)
+	if err != nil {
+		return Proof{}, fmt.Errorf("generate IPA blinders: %s", err)
+	}
+
+	var B_c bls12381.G1Jac
+	if _, err := B_c.MultiExp(crs.Gs, r_c, common.MultiExpConf); err != nil {
+		return Proof{}, fmt.Errorf("multiexp B_c: %s", err)
+	}
+	var B_d bls12381.G1Jac
+	if _, err := B_d.MultiExp(crs.Gs_prime, r_d, common.MultiExpConf); err != nil {
+		return Proof{}, fmt.Errorf("multiexp B_d: %s", err)
+	}
+
+	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
+	transcript.AppendScalar([]byte("ipa_step1"), z)
+	transcript.AppendPoints([]byte("ipa_step1"), &B_c, &B_d)
+
+	// TODO(jsign): const-ize labels.
+	alpha := transcript.GetChallenge([]byte("ipa_alpha"))
+	beta := transcript.GetChallenge([]byte("ipa_beta"))
+
+	n := uint(len(cs))
+	for i := 0; i < int(n); i++ {
+		var tmp fr.Element
+		tmp.Mul(&alpha, &cs[i])
+		cs[i].Add(&r_c[i], &tmp)
+		tmp.Mul(&alpha, &ds[i])
+		ds[i].Add(&r_d[i], &tmp)
+	}
+
+	var H bls12381.G1Jac
+	H.ScalarMultiplication(&crs.H, common.FrToBigInt(&beta))
+
+	// Step 2.
+	m := bits.Len(n) - 1
+	L_Cs := make([]bls12381.G1Jac, 0, m)
+	R_Cs := make([]bls12381.G1Jac, 0, m)
+	L_Ds := make([]bls12381.G1Jac, 0, m)
+	R_Ds := make([]bls12381.G1Jac, 0, m)
+
+	for len(cs) > 1 {
+		n /= 2
+
+		c_L, c_R := common.SplitAt(cs, n)
+		d_L, d_R := common.SplitAt(ds, n)
+		G_L, G_R := common.SplitAt(crs.Gs, n)
+		G_prime_L, G_prime_R := common.SplitAt(crs.Gs_prime, n)
+
+		var L_C, L_C_1, L_C_2 bls12381.G1Jac
+		if _, err := L_C_1.MultiExp(G_R, c_L, common.MultiExpConf); err != nil {
+			return Proof{}, fmt.Errorf("ipa L_C_1 multiexp: %s", err)
+		}
+		ipaCLDR := common.IPA(c_L, d_R)
+		L_C_2.ScalarMultiplication(&H, common.FrToBigInt(&ipaCLDR))
+		L_C.AddAssign(&L_C_1)
+		L_C.AddAssign(&L_C_2)
+
+		var L_D bls12381.G1Jac
+		if _, err := L_D.MultiExp(G_prime_L, d_R, common.MultiExpConf); err != nil {
+			return Proof{}, fmt.Errorf("ipa L_D multiexp: %s", err)
+		}
+
+		var R_C, R_C_1, R_C_2 bls12381.G1Jac
+		if _, err := R_C_1.MultiExp(G_L, c_R, common.MultiExpConf); err != nil {
+			return Proof{}, fmt.Errorf("ipa R_C_1 multiexp: %s", err)
+		}
+		ipaCRDL := common.IPA(c_R, d_L)
+		R_C_2.ScalarMultiplication(&H, common.FrToBigInt(&ipaCRDL))
+		R_C.AddAssign(&R_C_1)
+		R_C.AddAssign(&R_C_2)
+
+		var R_D bls12381.G1Jac
+		if _, err := R_D.MultiExp(G_prime_R, d_L, common.MultiExpConf); err != nil {
+			return Proof{}, fmt.Errorf("ipa R_D multiexp: %s", err)
+		}
+
+		L_Cs = append(L_Cs, L_C)
+		L_Ds = append(L_Ds, L_D)
+		R_Cs = append(R_Cs, R_C)
+		R_Ds = append(R_Ds, R_D)
+
+		transcript.AppendPoints([]byte("ipa_loop"), &L_C, &L_D, &R_C, &R_D)
+		gamma := transcript.GetChallenge([]byte("ipa_gamma"))
+		if gamma.IsZero() {
+			return Proof{}, fmt.Errorf("ipa gamma challenge is zero")
+		}
+		var gamma_inv fr.Element
+		gamma_inv.Inverse(&gamma)
+
+		for i := 0; i < int(n); i++ {
+			var tmps fr.Element
+			cs[i].Add(&c_L[i], tmps.Mul(&gamma_inv, &c_R[i]))
+			ds[i].Add(&d_L[i], tmps.Mul(&gamma, &d_R[i]))
+
+			var tmpp bls12381.G1Affine
+			tmpp.ScalarMultiplication(&G_R[i], common.FrToBigInt(&gamma))
+			crs.Gs[i].Add(&G_L[i], &tmpp)
+
+			tmpp.ScalarMultiplication(&G_prime_R[i], common.FrToBigInt(&gamma_inv))
+			crs.Gs_prime[i].Add(&G_prime_L[i], &tmpp)
+		}
+	}
+
+	// TODO(jsign): sanity check that we end up with correct lengths (i.e: 1)
+
+	return Proof{
+		Bc:  B_c,
+		Bd:  B_d,
+		LCs: L_Cs,
+		RCs: R_Cs,
+		LDs: L_Ds,
+		RDs: R_Ds,
+		c0:  cs[0],
+		d0:  ds[0],
+	}, nil
+}
