@@ -7,17 +7,18 @@ import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
+	"github.com/jsign/curdleproofs/msmaccumulator"
 	"github.com/jsign/curdleproofs/transcript"
 )
 
 type Proof struct {
-	Bc bls12381.G1Jac
-	Bd bls12381.G1Jac
+	B_c bls12381.G1Jac
+	B_d bls12381.G1Jac
 
-	LCs []bls12381.G1Jac
-	RCs []bls12381.G1Jac
-	LDs []bls12381.G1Jac
-	RDs []bls12381.G1Jac
+	L_Cs []bls12381.G1Jac
+	R_Cs []bls12381.G1Jac
+	L_Ds []bls12381.G1Jac
+	R_Ds []bls12381.G1Jac
 
 	c0 fr.Element
 	d0 fr.Element
@@ -218,13 +219,118 @@ func Prove(
 	// TODO(jsign): sanity check that we end up with correct lengths (i.e: 1)
 
 	return Proof{
-		Bc:  B_c,
-		Bd:  B_d,
-		LCs: L_Cs,
-		RCs: R_Cs,
-		LDs: L_Ds,
-		RDs: R_Ds,
-		c0:  cs[0],
-		d0:  ds[0],
+		B_c:  B_c,
+		B_d:  B_d,
+		L_Cs: L_Cs,
+		R_Cs: R_Cs,
+		L_Ds: L_Ds,
+		R_Ds: R_Ds,
+		c0:   cs[0],
+		d0:   ds[0],
 	}, nil
+}
+
+func Verify(
+	proof *Proof,
+	crs *CRS,
+	C bls12381.G1Jac,
+	D bls12381.G1Jac,
+	z fr.Element,
+	us []fr.Element,
+	transcript *transcript.Transcript,
+	msmAccumulator *msmaccumulator.MsmAccumulator,
+	rand *common.Rand,
+) (bool, error) {
+	// Step 1.
+	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
+	transcript.AppendScalar([]byte("ipa_step1"), z)
+	transcript.AppendPoints([]byte("ipa_step1"), &proof.B_c, &proof.B_d)
+	alpha := transcript.GetChallenge([]byte("ipa_alpha"))
+	beta := transcript.GetChallenge([]byte("ipa_beta"))
+
+	// Step 2.
+	n := len(crs.Gs)
+	if n&(n-1) != 0 {
+		return false, fmt.Errorf("ipa n is not a power of two")
+	}
+	m := bits.Len(uint(n)) - 1
+
+	gamma := make([]fr.Element, 0, m)
+	for i := 0; i < m; i++ {
+		transcript.AppendPoints([]byte("ipa_loop"), &proof.L_Cs[i], &proof.L_Ds[i], &proof.R_Cs[i], &proof.R_Ds[i])
+		gamma = append(gamma, transcript.GetChallenge([]byte("ipa_gamma")))
+	}
+	gamma_inv := fr.BatchInvert(gamma)
+
+	// Step 3.
+	s := make([]fr.Element, 0, n)
+	s_prime := make([]fr.Element, 0, n)
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			if i&(1<<j) != 0 {
+				s[i].Add(&s[i], &gamma[m-j])
+				s_prime[i].Add(&s[i], &gamma_inv[m-j])
+			}
+		}
+	}
+
+	// Accummulate check 1
+	var AC1, AC1_L, AC1_M_1, AC1_M_2, AC1_M_3, AC1_R bls12381.G1Jac
+	if _, err := AC1_L.MultiExp(bls12381.BatchJacobianToAffineG1(proof.L_Cs), gamma, common.MultiExpConf); err != nil {
+		return false, fmt.Errorf("ipa AC1_L multiexp: %s", err)
+	}
+	AC1_M_1.Set(&proof.B_c)
+	AC1_M_2.ScalarMultiplication(&C, common.FrToBigInt(&alpha))
+	var alphasquaredtimesz fr.Element
+	alphasquaredtimesz.Mul(&alpha, &alpha)
+	alphasquaredtimesz.Mul(&alphasquaredtimesz, &z)
+	AC1_M_3.ScalarMultiplication(&crs.H, common.FrToBigInt(&alphasquaredtimesz))
+	if _, err := AC1_R.MultiExp(bls12381.BatchJacobianToAffineG1(proof.R_Cs), gamma_inv, common.MultiExpConf); err != nil {
+		return false, fmt.Errorf("ipa AC1_R multiexp: %s", err)
+	}
+	C.Set(&AC1_L)
+	C.AddAssign(&AC1_M_1)
+	C.AddAssign(&AC1_M_2)
+	C.AddAssign(&AC1_M_3)
+	C.AddAssign(&AC1_R)
+	GplusH := make([]bls12381.G1Affine, len(crs.Gs)+1)
+	copy(GplusH, crs.Gs)
+	var HAffine bls12381.G1Affine
+	HAffine.FromJacobian(&crs.H) // TODO(jsign): let's avoid this.
+	GplusH[len(crs.Gs)].Set(&HAffine)
+	for i := range s {
+		s[i].Mul(&s[i], &proof.c0)
+	}
+	beta.Mul(&beta, &proof.d0)
+	beta.Mul(&beta, &proof.c0)
+	scalars := append(s, beta)
+
+	if err := msmAccumulator.AccumulateCheck(AC1, scalars, GplusH, rand); err != nil {
+		return false, fmt.Errorf("accumulate check 1: %s", err)
+	}
+
+	// Accummulate check 2
+	var AC2, AC2_L, AC2_M_1, AC2_M_2, AC2_R bls12381.G1Jac
+	if _, err := AC2_L.MultiExp(bls12381.BatchJacobianToAffineG1(proof.L_Ds), gamma, common.MultiExpConf); err != nil {
+		return false, fmt.Errorf("multiexp: %s", err)
+	}
+	AC2_M_1.Set(&proof.B_d)
+	AC2_M_2.ScalarMultiplication(&D, common.FrToBigInt(&alpha))
+	if _, err := AC2_R.MultiExp(bls12381.BatchJacobianToAffineG1(proof.R_Ds), gamma_inv, common.MultiExpConf); err != nil {
+		return false, fmt.Errorf("multiexp: %s", err)
+	}
+	AC2.Set(&AC2_L)
+	AC2.AddAssign(&AC2_M_1)
+	AC2.AddAssign(&AC2_M_2)
+	AC2.AddAssign(&AC2_R)
+	scalars = s_prime
+	for i := range s_prime {
+		scalars[i].Mul(&scalars[i], &us[i])
+		scalars[i].Mul(&scalars[i], &proof.d0)
+	}
+	if err := msmAccumulator.AccumulateCheck(AC2, scalars, crs.Gs, rand); err != nil {
+		return false, fmt.Errorf("accumulate check 1: %s", err)
+	}
+
+	return true, nil
 }
