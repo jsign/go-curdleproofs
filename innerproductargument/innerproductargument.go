@@ -24,15 +24,15 @@ type Proof struct {
 	d0 fr.Element
 }
 
-func generateIPABlinders(rand common.Rand, cs []fr.Element, d []fr.Element) ([]fr.Element, []fr.Element, error) {
+func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([]fr.Element, []fr.Element, error) {
 	n := len(cs)
 
 	// Generate all the blinders but leave out two blinders from z
-	r, err := rand.GetFrs(n)
+	rs, err := rand.GetFrs(n)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generate rs: %s", err)
 	}
-	z, err := rand.GetFrs(n - 2)
+	zs, err := rand.GetFrs(n - 2)
 	if err != nil {
 		return nil, nil, fmt.Errorf("generate zs: %s", err)
 	}
@@ -41,14 +41,14 @@ func generateIPABlinders(rand common.Rand, cs []fr.Element, d []fr.Element) ([]f
 	// Consider first equation: <r, d> + <z, c> == 0
 	// <=> r_1 * d_1 + ... + r_n * d_n + z_1 * c_1 + ... + z_{n-1} * c_{n-1} + z_n * c_n == 0
 	// The last two products contain the unknowns whereas all the previous is a known quantity `omega` -- let's compute it below
-	omegaL := common.IPA(r, d)
-	omegaR := common.IPA(z[:n-2], cs[:n-2])
+	omegaL := common.IPA(rs, ds)
+	omegaR := common.IPA(zs[:n-2], cs[:n-2])
 	var omega fr.Element
 	omega.Add(&omegaL, &omegaR)
 	// Now let's consider the second equation: <r, z> == 0
 	// <=> r_1 * z_1 + ... r_{n-1} * z_{n-1} * r_n * z_n == 0
 	// Again, the last two products contain the unknowns whereas all the previous is a known quantity `delta` -- let's compute it below
-	delta := common.IPA(r[:n-2], z[:n-2])
+	delta := common.IPA(rs[:n-2], zs[:n-2])
 
 	// Solving the first equation for z_{n-1} we get:
 	//
@@ -64,13 +64,14 @@ func generateIPABlinders(rand common.Rand, cs []fr.Element, d []fr.Element) ([]f
 	inv_c.Inverse(&cs[n-2])
 
 	var last_z, last_z_term1, last_z_term2 fr.Element
-	last_z_term1.Mul(&r[n-2], &inv_c)
-	last_z_term1.Mul(&last_z, &omega)
-	last_z_term1.Sub(&last_z, &delta)
-	last_z_term2.Neg(&r[n-2])
+	last_z_term1.Mul(&rs[n-2], &inv_c)
+	last_z_term1.Mul(&last_z_term1, &omega)
+	last_z_term1.Sub(&last_z_term1, &delta)
+	last_z_term2.Neg(&rs[n-2])
 	last_z_term2.Mul(&last_z_term2, &inv_c)
 	last_z_term2.Mul(&last_z_term2, &cs[n-1])
-	last_z_term2.Add(&last_z_term2, &r[n-1])
+	last_z_term2.Add(&last_z_term2, &rs[n-1])
+	// TODO(jsign): maybe check tha last_z_term2 is not zero?
 	last_z_term2.Inverse(&last_z_term2)
 	last_z.Mul(&last_z_term1, &last_z_term2)
 
@@ -80,20 +81,20 @@ func generateIPABlinders(rand common.Rand, cs []fr.Element, d []fr.Element) ([]f
 	penultimate_z_term2.Add(&penultimate_z_term2, &omega)
 	penultimate_z.Mul(&penultimate_z_term1, &penultimate_z_term2)
 
-	z = append(z, penultimate_z, last_z)
+	zs = append(zs, penultimate_z, last_z)
 
 	// Make sure the constraints were satisfied
-	checkTerm1 := common.IPA(r, d)
-	checkTerm2 := common.IPA(z, cs)
+	checkTerm1 := common.IPA(rs, ds)
+	checkTerm2 := common.IPA(zs, cs)
 	if !checkTerm1.Add(&checkTerm1, &checkTerm2).IsZero() {
 		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
 	}
-	check := common.IPA(r, z)
+	check := common.IPA(rs, zs)
 	if !check.IsZero() {
 		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
 	}
 
-	return r, z, nil
+	return rs, zs, nil
 }
 
 func Prove(
@@ -107,7 +108,7 @@ func Prove(
 	ds []fr.Element,
 
 	transcript *transcript.Transcript,
-	rand common.Rand,
+	rand *common.Rand,
 ) (Proof, error) {
 	// TODO(jsign): sanity checks that cs and ds are the same length and a power of two.
 
@@ -161,28 +162,28 @@ func Prove(
 		G_L, G_R := common.SplitAt(crs.Gs, n)
 		G_prime_L, G_prime_R := common.SplitAt(crs.Gs_prime, n)
 
-		var L_C, L_C_1, L_C_2 bls12381.G1Jac
-		if _, err := L_C_1.MultiExp(G_R, c_L, common.MultiExpConf); err != nil {
+		var L_C, L_C_L, L_C_R bls12381.G1Jac
+		if _, err := L_C_L.MultiExp(G_R, c_L, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("ipa L_C_1 multiexp: %s", err)
 		}
 		ipaCLDR := common.IPA(c_L, d_R)
-		L_C_2.ScalarMultiplication(&H, common.FrToBigInt(&ipaCLDR))
-		L_C.AddAssign(&L_C_1)
-		L_C.AddAssign(&L_C_2)
+		L_C_R.ScalarMultiplication(&H, common.FrToBigInt(&ipaCLDR))
+		L_C.Set(&L_C_L)
+		L_C.AddAssign(&L_C_R)
 
 		var L_D bls12381.G1Jac
 		if _, err := L_D.MultiExp(G_prime_L, d_R, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("ipa L_D multiexp: %s", err)
 		}
 
-		var R_C, R_C_1, R_C_2 bls12381.G1Jac
-		if _, err := R_C_1.MultiExp(G_L, c_R, common.MultiExpConf); err != nil {
+		var R_C, R_C_L, R_C_R bls12381.G1Jac
+		if _, err := R_C_L.MultiExp(G_L, c_R, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("ipa R_C_1 multiexp: %s", err)
 		}
 		ipaCRDL := common.IPA(c_R, d_L)
-		R_C_2.ScalarMultiplication(&H, common.FrToBigInt(&ipaCRDL))
-		R_C.AddAssign(&R_C_1)
-		R_C.AddAssign(&R_C_2)
+		R_C_R.ScalarMultiplication(&H, common.FrToBigInt(&ipaCRDL))
+		R_C.Set(&R_C_L)
+		R_C.AddAssign(&R_C_R)
 
 		var R_D bls12381.G1Jac
 		if _, err := R_D.MultiExp(G_prime_R, d_L, common.MultiExpConf); err != nil {
@@ -204,16 +205,21 @@ func Prove(
 
 		for i := 0; i < int(n); i++ {
 			var tmps fr.Element
-			cs[i].Add(&c_L[i], tmps.Mul(&gamma_inv, &c_R[i]))
-			ds[i].Add(&d_L[i], tmps.Mul(&gamma, &d_R[i]))
+			c_L[i].Add(&c_L[i], tmps.Mul(&gamma_inv, &c_R[i]))
+			d_L[i].Add(&d_L[i], tmps.Mul(&gamma, &d_R[i]))
 
 			var tmpp bls12381.G1Affine
 			tmpp.ScalarMultiplication(&G_R[i], common.FrToBigInt(&gamma))
-			crs.Gs[i].Add(&G_L[i], &tmpp)
+			G_L[i].Add(&G_L[i], &tmpp)
 
 			tmpp.ScalarMultiplication(&G_prime_R[i], common.FrToBigInt(&gamma_inv))
-			crs.Gs_prime[i].Add(&G_prime_L[i], &tmpp)
+			G_prime_L[i].Add(&G_prime_L[i], &tmpp)
 		}
+
+		cs = c_L
+		ds = d_L
+		crs.Gs = G_L
+		crs.Gs_prime = G_prime_L
 	}
 
 	// TODO(jsign): sanity check that we end up with correct lengths (i.e: 1)
@@ -263,13 +269,15 @@ func Verify(
 	gamma_inv := fr.BatchInvert(gamma)
 
 	// Step 3.
-	s := make([]fr.Element, 0, n)
-	s_prime := make([]fr.Element, 0, n)
+	s := make([]fr.Element, n)
+	s_prime := make([]fr.Element, n)
 	for i := 0; i < n; i++ {
+		s[i] = fr.One()
+		s_prime[i] = fr.One()
 		for j := 0; j < m; j++ {
 			if i&(1<<j) != 0 {
-				s[i].Add(&s[i], &gamma[m-j])
-				s_prime[i].Add(&s[i], &gamma_inv[m-j])
+				s[i].Mul(&s[i], &gamma[m-j-1])
+				s_prime[i].Mul(&s_prime[i], &gamma_inv[m-j-1])
 			}
 		}
 	}
@@ -284,15 +292,17 @@ func Verify(
 	var alphasquaredtimesz fr.Element
 	alphasquaredtimesz.Mul(&alpha, &alpha)
 	alphasquaredtimesz.Mul(&alphasquaredtimesz, &z)
-	AC1_M_3.ScalarMultiplication(&crs.H, common.FrToBigInt(&alphasquaredtimesz))
+	var betaH bls12381.G1Jac
+	betaH.ScalarMultiplication(&crs.H, common.FrToBigInt(&beta))
+	AC1_M_3.ScalarMultiplication(&betaH, common.FrToBigInt(&alphasquaredtimesz))
 	if _, err := AC1_R.MultiExp(bls12381.BatchJacobianToAffineG1(proof.R_Cs), gamma_inv, common.MultiExpConf); err != nil {
 		return false, fmt.Errorf("ipa AC1_R multiexp: %s", err)
 	}
-	C.Set(&AC1_L)
-	C.AddAssign(&AC1_M_1)
-	C.AddAssign(&AC1_M_2)
-	C.AddAssign(&AC1_M_3)
-	C.AddAssign(&AC1_R)
+	AC1.Set(&AC1_L)
+	AC1.AddAssign(&AC1_M_1)
+	AC1.AddAssign(&AC1_M_2)
+	AC1.AddAssign(&AC1_M_3)
+	AC1.AddAssign(&AC1_R)
 	GplusH := make([]bls12381.G1Affine, len(crs.Gs)+1)
 	copy(GplusH, crs.Gs)
 	var HAffine bls12381.G1Affine
