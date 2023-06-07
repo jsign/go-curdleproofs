@@ -23,18 +23,18 @@ func TestSameMultiscalarArgument(t *testing.T) {
 
 		crs_G_vec, err := rand.GetG1Affines(n)
 		require.NoError(t, err)
-		vec_T, err := rand.GetG1Affines(n)
+		Ts, err := rand.GetG1Affines(n)
 		require.NoError(t, err)
-		vec_U, err := rand.GetG1Affines(n)
+		Us, err := rand.GetG1Affines(n)
 		require.NoError(t, err)
-		vec_x, err := rand.GetFrs(n)
+		xs, err := rand.GetFrs(n)
 		require.NoError(t, err)
 
-		A, err := (&bls12381.G1Jac{}).MultiExp(crs_G_vec, vec_x, common.MultiExpConf)
+		A, err := (&bls12381.G1Jac{}).MultiExp(crs_G_vec, xs, common.MultiExpConf)
 		require.NoError(t, err)
-		Z_t, err := (&bls12381.G1Jac{}).MultiExp(vec_T, vec_x, common.MultiExpConf)
+		Z_t, err := (&bls12381.G1Jac{}).MultiExp(Ts, xs, common.MultiExpConf)
 		require.NoError(t, err)
-		Z_u, err := (&bls12381.G1Jac{}).MultiExp(vec_U, vec_x, common.MultiExpConf)
+		Z_u, err := (&bls12381.G1Jac{}).MultiExp(Us, xs, common.MultiExpConf)
 		require.NoError(t, err)
 
 		proof, err = Prove(
@@ -42,9 +42,9 @@ func TestSameMultiscalarArgument(t *testing.T) {
 			A,
 			Z_t,
 			Z_u,
-			vec_T,
-			vec_U,
-			vec_x,
+			Ts,
+			Us,
+			xs,
 			transcriptProver,
 			rand,
 		)
