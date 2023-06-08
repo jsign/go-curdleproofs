@@ -29,6 +29,7 @@ func (t *Transcript) AppendMessage(label []byte, message []byte) {
 	t.strobe.AD(false, message)
 }
 
+// TODO(jsign): maybe unify with AppendPoints since it's variadic.
 func (t *Transcript) AppendPoint(label []byte, point *bls12381.G1Affine) {
 	var bytes bytes.Buffer
 	affineBytes := point.Bytes()
