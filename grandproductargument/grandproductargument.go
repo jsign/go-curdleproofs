@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/innerproductargument"
+	"github.com/jsign/curdleproofs/msmaccumulator"
 	"github.com/jsign/curdleproofs/transcript"
 )
 
@@ -185,4 +186,86 @@ func Prove(
 		Rp:       r_p,
 		IPAProof: ipaProof,
 	}, nil
+}
+
+func Verify(
+	proof Proof,
+	crs *CRS,
+	Gsum *bls12381.G1Affine,
+	Hsum *bls12381.G1Affine,
+	B *bls12381.G1Jac,
+	result fr.Element,
+	numBlinders int,
+	transcript *transcript.Transcript,
+	msmAccumulator *msmaccumulator.MsmAccumulator,
+	rand *common.Rand,
+) (bool, error) {
+	// Step 1
+	transcript.AppendPoints([]byte("gprod_step1"), B)
+	transcript.AppendScalar([]byte("gprod_step1"), result)
+	alpha := transcript.GetChallenge([]byte("gprod_alpha"))
+
+	// Step 2
+	transcript.AppendPoints([]byte("gprod_step2"), &proof.C)
+	transcript.AppendScalar([]byte("gprod_step2"), proof.Rp)
+	beta := transcript.GetChallenge([]byte("gprod_beta"))
+	if beta.IsZero() {
+		return false, fmt.Errorf("beta is zero")
+	}
+
+	// Step 3
+	var betaInv fr.Element
+	betaInv.Inverse(&beta)
+	us := make([]fr.Element, len(crs.Gs)+numBlinders)
+	betaInvPow := betaInv
+	for i := 0; i < len(crs.Gs); i++ {
+		us[i] = betaInvPow
+		betaInvPow.Mul(&betaInvPow, &betaInv)
+	}
+	for i := len(crs.Gs); i < len(us); i++ {
+		us[i] = betaInvPow
+	}
+	var D, D_M, D_R bls12381.G1Affine
+	D_M.ScalarMultiplication(Gsum, common.FrToBigInt(&betaInv))
+	D_R.ScalarMultiplication(Hsum, common.FrToBigInt(&alpha))
+	D.FromJacobian(B).Sub(&D, &D_M).Add(&D, &D_R)
+
+	// Step 4
+	Gs := make([]bls12381.G1Affine, len(crs.Gs)+len(crs.Hs))
+	copy(Gs, crs.Gs)
+	copy(Gs[len(crs.Gs):], crs.Hs)
+
+	var z, z_L, z_M fr.Element
+	var betaExpL, betaExpLPlusOne fr.Element
+	betaExpL.Exp(beta, big.NewInt(int64(len(crs.Gs))))
+	betaExpLPlusOne.Mul(&betaExpL, &beta)
+	z_L.Mul(&result, &betaExpL)
+	z_M.Mul(&proof.Rp, &betaExpLPlusOne)
+	z.Add(&z_L, &z_M)
+	z.Add(&z, &minusOne)
+
+	ipaCRS := innerproductargument.CRS{
+		Gs: Gs,
+		// TODO(jsign): not using Gs_prime, reconsider.
+		H: crs.H,
+	}
+
+	var DAffine bls12381.G1Jac
+	DAffine.FromAffine(&D) // TODO(jsign): despite doesn't require inversion, see if we can avoid this.
+	ok, err := innerproductargument.Verify(
+		&proof.IPAProof,
+		&ipaCRS,
+		proof.C,
+		DAffine,
+		z,
+		us,
+		transcript,
+		msmAccumulator,
+		rand,
+	)
+	if err != nil {
+		return false, fmt.Errorf("inner product proof verification: %s", err)
+	}
+
+	return ok, nil
 }
