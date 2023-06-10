@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/grandproductargument"
+	"github.com/jsign/curdleproofs/msmaccumulator"
 	"github.com/jsign/curdleproofs/transcript"
 )
 
@@ -86,4 +87,67 @@ func Prove(
 		B:        B,
 		gpaProof: gpaproof,
 	}, nil
+}
+
+func Verify(
+	proof Proof,
+	crs CRS,
+	Gsum *bls12381.G1Affine,
+	Hsum *bls12381.G1Affine,
+	A bls12381.G1Jac,
+	M bls12381.G1Jac,
+	as []fr.Element,
+	numBlinders int,
+	transcript *transcript.Transcript,
+	msmAccumulator *msmaccumulator.MsmAccumulator,
+
+	rand *common.Rand,
+) (bool, error) {
+	// Step 1
+	// TODO(jsign): double check FS since doesn't seem to match paper.
+	transcript.AppendPoints([]byte("same_perm_step1"), &A, &M)
+	transcript.AppendScalars([]byte("same_perm_step1"), as...)
+	alpha := transcript.GetAndAppendChallenge([]byte("same_perm_alpha"))
+	beta := transcript.GetAndAppendChallenge([]byte("same_perm_beta"))
+
+	// Step 2
+	var p fr.Element
+	for i := range as {
+		tmp := fr.NewElement(uint64(i))
+		tmp.Mul(&tmp, &alpha).Add(&tmp, &beta).Add(&tmp, &as[i])
+		p.Mul(&p, &tmp)
+	}
+
+	betas := make([]fr.Element, len(crs.Gs))
+	for i := range betas {
+		betas[i] = beta
+	}
+	var C bls12381.G1Jac
+	var alphaM bls12381.G1Jac
+	alphaM.ScalarMultiplication(&M, common.FrToBigInt(&alpha))
+	C.Set(&proof.B).SubAssign(&A).SubAssign(&alphaM)
+	if err := msmAccumulator.AccumulateCheck(C, betas, crs.Gs, rand); err != nil {
+		return false, fmt.Errorf("failed to accumulate check: %s", err)
+	}
+
+	ok, err := grandproductargument.Verify(
+		proof.gpaProof,
+		&grandproductargument.CRS{
+			Gs: crs.Gs,
+			Hs: crs.Hs,
+			H:  crs.H,
+		},
+		Gsum,
+		Hsum,
+		&proof.B,
+		p,
+		numBlinders,
+		transcript,
+		msmAccumulator,
+		rand,
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to verify grand product argument: %s", err)
+	}
+	return ok, nil
 }
