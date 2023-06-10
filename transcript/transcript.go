@@ -44,9 +44,11 @@ func (t *Transcript) AppendPointsAffine(label []byte, points ...*bls12381.G1Affi
 	}
 }
 
-func (t *Transcript) AppendScalar(label []byte, scalar fr.Element) {
-	scalarBytes := scalar.Bytes()
-	t.appendMessage([]byte(label), scalarBytes[:])
+func (t *Transcript) AppendScalars(label []byte, scalars ...fr.Element) {
+	for _, scalar := range scalars {
+		scalarBytes := scalar.Bytes()
+		t.appendMessage([]byte(label), scalarBytes[:])
+	}
 }
 
 func (t *Transcript) GetAndAppendChallenge(label []byte) fr.Element {
@@ -55,7 +57,7 @@ func (t *Transcript) GetAndAppendChallenge(label []byte) fr.Element {
 		t.inner.ChallengeBytes(label, dest[:])
 		var challenge fr.Element
 		if err := challenge.SetBytesCanonical(dest[:]); err == nil {
-			t.AppendScalar(label, challenge)
+			t.AppendScalars(label, challenge)
 			return challenge
 		}
 	}

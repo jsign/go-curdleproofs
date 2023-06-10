@@ -128,7 +128,7 @@ func Prove(
 	}
 
 	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
-	transcript.AppendScalar([]byte("ipa_step1"), z)
+	transcript.AppendScalars([]byte("ipa_step1"), z)
 	transcript.AppendPoints([]byte("ipa_step1"), &B_c, &B_d)
 
 	// TODO(jsign): const-ize labels.
@@ -249,7 +249,7 @@ func Verify(
 ) (bool, error) {
 	// Step 1.
 	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
-	transcript.AppendScalar([]byte("ipa_step1"), z)
+	transcript.AppendScalars([]byte("ipa_step1"), z)
 	transcript.AppendPoints([]byte("ipa_step1"), &proof.B_c, &proof.B_d)
 	alpha := transcript.GetAndAppendChallenge([]byte("ipa_alpha"))
 	beta := transcript.GetAndAppendChallenge([]byte("ipa_beta"))
