@@ -41,25 +41,29 @@ func Prove(
 
 	// Step 2
 	permutedAs := common.Permute(as, permutation)
-	b := make([]fr.Element, len(as))
+	permutationFrs := make([]fr.Element, len(permutation))
+	for i := range permutation {
+		permutationFrs[i] = fr.NewElement(uint64(permutation[i]))
+	}
+	bs := make([]fr.Element, len(as))
 	p := fr.One()
 	for i := range permutedAs {
-		b[i].Mul(&alpha, &as[i]).Add(&b[i], &permutedAs[i]).Add(&b[i], &beta)
-		p.Mul(&p, &b[i])
+		bs[i].Mul(&alpha, &permutationFrs[i]).Add(&bs[i], &permutedAs[i]).Add(&bs[i], &beta)
+		p.Mul(&p, &bs[i])
 	}
 
 	betas := make([]fr.Element, len(crs.Gs))
 	for i := range betas {
 		betas[i] = beta
 	}
-	var msmBsGs bls12381.G1Jac
-	if _, err := msmBsGs.MultiExp(crs.Gs, betas, common.MultiExpConf); err != nil {
+	var msmBetasGs bls12381.G1Jac
+	if _, err := msmBetasGs.MultiExp(crs.Gs, betas, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("failed to compute msm(Bs, Gs): %s", err)
 	}
 	var alphaM bls12381.G1Jac
 	alphaM.ScalarMultiplication(&M, common.FrToBigInt(&alpha))
 	var B bls12381.G1Jac
-	B.Set(&A).AddAssign(&alphaM).AddAssign(&msmBsGs)
+	B.Set(&A).AddAssign(&alphaM).AddAssign(&msmBetasGs)
 
 	rs_b := make([]fr.Element, len(rs_a))
 	for i := range rs_b {
@@ -74,7 +78,7 @@ func Prove(
 		},
 		B,
 		p,
-		b,
+		bs,
 		rs_b,
 		transcript,
 		rand,
@@ -111,7 +115,7 @@ func Verify(
 	beta := transcript.GetAndAppendChallenge([]byte("same_perm_beta"))
 
 	// Step 2
-	var p fr.Element
+	p := fr.One()
 	for i := range as {
 		tmp := fr.NewElement(uint64(i))
 		tmp.Mul(&tmp, &alpha).Add(&tmp, &beta).Add(&tmp, &as[i])
