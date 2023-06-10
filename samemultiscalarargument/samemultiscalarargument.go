@@ -68,14 +68,8 @@ func Prove(
 	}
 
 	transcript.AppendPoints([]byte("same_msm_step1"), A, Z_t, Z_u)
-	uniontTU := make([]*bls12381.G1Affine, 0, len(T)+len(U))
-	for i := range T {
-		uniontTU = append(uniontTU, &T[i])
-	}
-	for i := range U {
-		uniontTU = append(uniontTU, &U[i])
-	}
-	transcript.AppendPointsAffine([]byte("same_msm_step1"), uniontTU...)
+	transcript.AppendPointsAffine([]byte("same_msm_step1"), T...)
+	transcript.AppendPointsAffine([]byte("same_msm_step1"), U...)
 	transcript.AppendPoints([]byte("same_msm_step1"), B_a, B_t, B_u)
 	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
 
@@ -173,14 +167,8 @@ func Verify(
 	n := len(T)
 
 	transcript.AppendPoints([]byte("same_msm_step1"), A, Z_t, Z_u)
-	TU := make([]*bls12381.G1Affine, len(T)+len(U))
-	for i := 0; i < len(T); i++ {
-		TU[i] = &T[i]
-	}
-	for i := 0; i < len(U); i++ {
-		TU[i+len(T)] = &U[i]
-	}
-	transcript.AppendPointsAffine([]byte("same_msm_step1"), TU...)
+	transcript.AppendPointsAffine([]byte("same_msm_step1"), T...)
+	transcript.AppendPointsAffine([]byte("same_msm_step1"), U...)
 	transcript.AppendPoints([]byte("same_msm_step1"), proof.B_a, proof.B_t, proof.B_u)
 	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
 

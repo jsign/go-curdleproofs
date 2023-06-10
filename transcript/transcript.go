@@ -38,9 +38,9 @@ func (t *Transcript) AppendPoints(label []byte, points ...*bls12381.G1Jac) {
 	}
 }
 
-func (t *Transcript) AppendPointsAffine(label []byte, points ...*bls12381.G1Affine) {
+func (t *Transcript) AppendPointsAffine(label []byte, points ...bls12381.G1Affine) {
 	for _, point := range points {
-		t.AppendPoint(label, point)
+		t.AppendPoint(label, &point)
 	}
 }
 
