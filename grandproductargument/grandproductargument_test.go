@@ -140,17 +140,17 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 
 // TOOD(jsign): replicat in other tests.
 func genVerifierParameters(t *testing.T, n int, numBlinders int) (CRS, bls12381.G1Affine, bls12381.G1Affine, bls12381.G1Jac, fr.Element, *transcript.Transcript, *msmaccumulator.MsmAccumulator) {
-	rando, err := common.NewRand(0)
+	rand, err := common.NewRand(0)
 	require.NoError(t, err)
 
 	transcriptVerifier := transcript.New([]byte("gprod"))
 	msmAccumulator := msmaccumulator.New()
 
-	crsGs, err := rando.GetG1Affines(n - numBlinders)
+	crsGs, err := rand.GetG1Affines(n - numBlinders)
 	require.NoError(t, err)
-	crsHs, err := rando.GetG1Affines(numBlinders)
+	crsHs, err := rand.GetG1Affines(numBlinders)
 	require.NoError(t, err)
-	crsH, err := rando.GetG1Jac()
+	crsH, err := rand.GetG1Jac()
 	require.NoError(t, err)
 	var Gsum bls12381.G1Affine
 	for _, g := range crsGs {
@@ -165,9 +165,9 @@ func genVerifierParameters(t *testing.T, n int, numBlinders int) (CRS, bls12381.
 		Hs: crsHs,
 		H:  crsH,
 	}
-	bs, err := rando.GetFrs(n - numBlinders)
+	bs, err := rand.GetFrs(n - numBlinders)
 	require.NoError(t, err)
-	r_bs, err := rando.GetFrs(numBlinders)
+	r_bs, err := rand.GetFrs(numBlinders)
 	require.NoError(t, err)
 
 	result := fr.One()
