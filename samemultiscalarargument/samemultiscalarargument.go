@@ -77,7 +77,7 @@ func Prove(
 	}
 	transcript.AppendPointsAffine([]byte("same_msm_step1"), uniontTU...)
 	transcript.AppendPoints([]byte("same_msm_step1"), B_a, B_t, B_u)
-	alpha := transcript.GetChallenge([]byte("same_msm_alpha"))
+	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
 
 	for i := range x {
 		x[i].Add(&r[i], (&fr.Element{}).Mul(&x[i], &alpha))
@@ -124,7 +124,7 @@ func Prove(
 		vec_R_U = append(vec_R_U, *R_U)
 
 		transcript.AppendPoints([]byte("same_msm_loop"), L_A, L_T, L_U, R_A, R_T, R_U)
-		gamma := transcript.GetChallenge([]byte("same_msm_gamma"))
+		gamma := transcript.GetAndAppendChallenge([]byte("same_msm_gamma"))
 		gamma_inv := (&fr.Element{}).Inverse(&gamma)
 		if gamma_inv.Equal(&gamma) {
 			return Proof{}, fmt.Errorf("gamma is not invertible")
@@ -182,7 +182,7 @@ func Verify(
 	}
 	transcript.AppendPointsAffine([]byte("same_msm_step1"), TU...)
 	transcript.AppendPoints([]byte("same_msm_step1"), proof.B_a, proof.B_t, proof.B_u)
-	alpha := transcript.GetChallenge([]byte("same_msm_alpha"))
+	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
 
 	gamma, gamma_inv, s, err := unfoldedScalars(proof, n, transcript)
 	if err != nil {
@@ -272,7 +272,7 @@ func unfoldedScalars(
 			&proof.R_T[i],
 			&proof.R_U[i],
 		)
-		challenges = append(challenges, transcript.GetChallenge([]byte("same_msm_gamma")))
+		challenges = append(challenges, transcript.GetAndAppendChallenge([]byte("same_msm_gamma")))
 	}
 
 	vec_s := make([]fr.Element, 0, n)

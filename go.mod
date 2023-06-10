@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/consensys/gnark-crypto v0.11.0
-	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b
-	github.com/stretchr/testify v1.8.0
+	github.com/jsign/merlin v0.0.0-20230603163309-c45ec8d8b2ce
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 )
 

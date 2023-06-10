@@ -2,31 +2,24 @@ package transcript
 
 import (
 	"bytes"
-	"encoding/binary"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/mimoo/StrobeGo/strobe"
+	transcript "github.com/jsign/merlin"
 )
 
 type Transcript struct {
-	strobe strobe.Strobe
+	inner transcript.Transcript
 }
 
 func New(label []byte) *Transcript {
-	t := &Transcript{
-		strobe: strobe.InitStrobe("Merlin v1.0", 128),
+	return &Transcript{
+		inner: *transcript.New(label),
 	}
-	t.AppendMessage([]byte("dom-sep"), label)
-	return t
 }
 
-func (t *Transcript) AppendMessage(label []byte, message []byte) {
-	var dataLenBytes [4]byte
-	binary.LittleEndian.PutUint32(dataLenBytes[:], uint32(len(message)))
-	t.strobe.AD(true, label)
-	t.strobe.AD(true, dataLenBytes[:])
-	t.strobe.AD(false, message)
+func (t *Transcript) appendMessage(label []byte, message []byte) {
+	t.inner.AppendMessage(label, message)
 }
 
 // TODO(jsign): maybe unify with AppendPoints since it's variadic.
@@ -34,7 +27,7 @@ func (t *Transcript) AppendPoint(label []byte, point *bls12381.G1Affine) {
 	var bytes bytes.Buffer
 	affineBytes := point.Bytes()
 	bytes.Write(affineBytes[:])
-	t.AppendMessage(label, bytes.Bytes())
+	t.appendMessage(label, bytes.Bytes())
 }
 
 func (t *Transcript) AppendPoints(label []byte, points ...*bls12381.G1Jac) {
@@ -53,24 +46,17 @@ func (t *Transcript) AppendPointsAffine(label []byte, points ...*bls12381.G1Affi
 
 func (t *Transcript) AppendScalar(label []byte, scalar fr.Element) {
 	scalarBytes := scalar.Bytes()
-	t.AppendMessage([]byte(label), scalarBytes[:])
+	t.appendMessage([]byte(label), scalarBytes[:])
 }
 
-func (t *Transcript) GetChallenge(label []byte) fr.Element {
+func (t *Transcript) GetAndAppendChallenge(label []byte) fr.Element {
 	for {
-		buf := t.challengeBytes(label, 32)
+		var dest [32]byte
+		t.inner.ChallengeBytes(label, dest[:])
 		var challenge fr.Element
-		if err := challenge.SetBytesCanonical(buf); err == nil {
+		if err := challenge.SetBytesCanonical(dest[:]); err == nil {
 			t.AppendScalar(label, challenge)
 			return challenge
 		}
 	}
-}
-
-func (t *Transcript) challengeBytes(label []byte, size uint32) []byte {
-	var dataLenBytes [4]byte
-	binary.LittleEndian.PutUint32(dataLenBytes[:], size)
-	t.strobe.AD(true, label)
-	t.strobe.AD(true, dataLenBytes[:])
-	return t.strobe.PRF(int(size))
 }

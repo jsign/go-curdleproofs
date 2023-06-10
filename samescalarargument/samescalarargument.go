@@ -53,7 +53,7 @@ func Prove(
 		&cm_B.T_1, &cm_B.T_2,
 	)
 
-	alpha := transcript.GetChallenge([]byte("same_scalar_alpha"))
+	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
 
 	z_k := (&fr.Element{}).Add(&r_k, (&fr.Element{}).Mul(k, &alpha))
 	z_t := (&fr.Element{}).Add(&r_a, (&fr.Element{}).Mul(r_t, &alpha))
@@ -83,7 +83,7 @@ func Verify(
 		&proof.Cm_A.T_1, &proof.Cm_A.T_2,
 		&proof.Cm_B.T_1, &proof.Cm_B.T_2,
 	)
-	alpha := transcript.GetChallenge([]byte("same_scalar_alpha"))
+	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
 
 	expected_1 := groupcommitment.New(&crs.G_t, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(R, common.FrToBigInt(&proof.Z_k)), &proof.Z_t)
 	expected_2 := groupcommitment.New(&crs.G_u, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(S, common.FrToBigInt(&proof.Z_k)), &proof.Z_u)

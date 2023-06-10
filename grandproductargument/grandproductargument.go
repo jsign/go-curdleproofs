@@ -43,7 +43,7 @@ func Prove(
 	// Step 1.
 	transcript.AppendPoints([]byte("gprod_step1"), &B)
 	transcript.AppendScalar([]byte("gprod_step1"), result)
-	alpha := transcript.GetChallenge([]byte("gprod_alpha"))
+	alpha := transcript.GetAndAppendChallenge([]byte("gprod_alpha"))
 
 	// Step 2.
 	cs := make([]fr.Element, len(crs.Gs))
@@ -71,7 +71,7 @@ func Prove(
 	r_p := common.IPA(r_b_plus_alpha, r_cs)
 	transcript.AppendPoints([]byte("gprod_step2"), &C)
 	transcript.AppendScalar([]byte("gprod_step2"), r_p)
-	beta := transcript.GetChallenge([]byte("gprod_beta"))
+	beta := transcript.GetAndAppendChallenge([]byte("gprod_beta"))
 	if beta.IsZero() {
 		return Proof{}, fmt.Errorf("beta is zero")
 	}
@@ -203,12 +203,12 @@ func Verify(
 	// Step 1
 	transcript.AppendPoints([]byte("gprod_step1"), B)
 	transcript.AppendScalar([]byte("gprod_step1"), result)
-	alpha := transcript.GetChallenge([]byte("gprod_alpha"))
+	alpha := transcript.GetAndAppendChallenge([]byte("gprod_alpha"))
 
 	// Step 2
 	transcript.AppendPoints([]byte("gprod_step2"), &proof.C)
 	transcript.AppendScalar([]byte("gprod_step2"), proof.Rp)
-	beta := transcript.GetChallenge([]byte("gprod_beta"))
+	beta := transcript.GetAndAppendChallenge([]byte("gprod_beta"))
 	if beta.IsZero() {
 		return false, fmt.Errorf("beta is zero")
 	}

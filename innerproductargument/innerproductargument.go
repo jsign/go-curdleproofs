@@ -132,8 +132,8 @@ func Prove(
 	transcript.AppendPoints([]byte("ipa_step1"), &B_c, &B_d)
 
 	// TODO(jsign): const-ize labels.
-	alpha := transcript.GetChallenge([]byte("ipa_alpha"))
-	beta := transcript.GetChallenge([]byte("ipa_beta"))
+	alpha := transcript.GetAndAppendChallenge([]byte("ipa_alpha"))
+	beta := transcript.GetAndAppendChallenge([]byte("ipa_beta"))
 
 	n := uint(len(cs))
 	for i := 0; i < int(n); i++ {
@@ -196,7 +196,7 @@ func Prove(
 		R_Ds = append(R_Ds, R_D)
 
 		transcript.AppendPoints([]byte("ipa_loop"), &L_C, &L_D, &R_C, &R_D)
-		gamma := transcript.GetChallenge([]byte("ipa_gamma"))
+		gamma := transcript.GetAndAppendChallenge([]byte("ipa_gamma"))
 		if gamma.IsZero() {
 			return Proof{}, fmt.Errorf("ipa gamma challenge is zero")
 		}
@@ -251,8 +251,8 @@ func Verify(
 	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
 	transcript.AppendScalar([]byte("ipa_step1"), z)
 	transcript.AppendPoints([]byte("ipa_step1"), &proof.B_c, &proof.B_d)
-	alpha := transcript.GetChallenge([]byte("ipa_alpha"))
-	beta := transcript.GetChallenge([]byte("ipa_beta"))
+	alpha := transcript.GetAndAppendChallenge([]byte("ipa_alpha"))
+	beta := transcript.GetAndAppendChallenge([]byte("ipa_beta"))
 
 	// Step 2.
 	n := len(crs.Gs)
@@ -264,7 +264,7 @@ func Verify(
 	gamma := make([]fr.Element, 0, m)
 	for i := 0; i < m; i++ {
 		transcript.AppendPoints([]byte("ipa_loop"), &proof.L_Cs[i], &proof.L_Ds[i], &proof.R_Cs[i], &proof.R_Ds[i])
-		gamma = append(gamma, transcript.GetChallenge([]byte("ipa_gamma")))
+		gamma = append(gamma, transcript.GetAndAppendChallenge([]byte("ipa_gamma")))
 	}
 	gamma_inv := fr.BatchInvert(gamma)
 
