@@ -32,3 +32,11 @@ func IPA(a []fr.Element, b []fr.Element) fr.Element {
 	}
 	return res
 }
+
+func Permute(vs []fr.Element, perm []uint32) []fr.Element {
+	ret := make([]fr.Element, len(vs))
+	for i := range perm {
+		ret[i].Set(&vs[perm[i]])
+	}
+	return ret
+}
