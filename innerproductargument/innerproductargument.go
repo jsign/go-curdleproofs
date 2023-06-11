@@ -11,6 +11,12 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
+type CRS struct {
+	Gs       []bls12381.G1Affine
+	Gs_prime []bls12381.G1Affine
+	H        bls12381.G1Jac
+}
+
 type Proof struct {
 	B_c bls12381.G1Jac
 	B_d bls12381.G1Jac
