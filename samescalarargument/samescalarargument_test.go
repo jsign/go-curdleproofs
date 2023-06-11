@@ -19,9 +19,9 @@ func TestProveVerify(t *testing.T) {
 	transcriptProver := transcript.New([]byte("same_scalar"))
 
 	var crs CRS
-	crs.G_t, err = rand.GetG1Jac()
+	crs.Gt, err = rand.GetG1Jac()
 	require.NoError(t, err)
-	crs.G_u, err = rand.GetG1Jac()
+	crs.Gu, err = rand.GetG1Jac()
 	require.NoError(t, err)
 	crs.H, err = rand.GetG1Jac()
 	require.NoError(t, err)
@@ -38,8 +38,8 @@ func TestProveVerify(t *testing.T) {
 	r_u, err := rand.GetFr()
 	require.NoError(t, err)
 
-	cm_T := groupcommitment.New(&crs.G_t, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&R, common.FrToBigInt(&k)), &r_t)
-	cm_U := groupcommitment.New(&crs.G_u, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&S, common.FrToBigInt(&k)), &r_u)
+	cm_T := groupcommitment.New(&crs.Gt, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&R, common.FrToBigInt(&k)), &r_t)
+	cm_U := groupcommitment.New(&crs.Gu, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&S, common.FrToBigInt(&k)), &r_u)
 
 	proof, err := Prove(
 		&crs,
