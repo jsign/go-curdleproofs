@@ -32,7 +32,7 @@ type CRS struct {
 }
 
 func Prove(
-	crs *CRS,
+	crs CRS,
 	B bls12381.G1Jac,
 	result fr.Element,
 	bs []fr.Element,
@@ -190,10 +190,10 @@ func Prove(
 
 func Verify(
 	proof Proof,
-	crs *CRS,
-	Gsum *bls12381.G1Affine,
-	Hsum *bls12381.G1Affine,
-	B *bls12381.G1Jac,
+	crs CRS,
+	Gsum bls12381.G1Affine,
+	Hsum bls12381.G1Affine,
+	B bls12381.G1Jac,
 	result fr.Element,
 	numBlinders int,
 	transcript *transcript.Transcript,
@@ -201,7 +201,7 @@ func Verify(
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1
-	transcript.AppendPoints([]byte("gprod_step1"), B)
+	transcript.AppendPoints([]byte("gprod_step1"), &B)
 	transcript.AppendScalars([]byte("gprod_step1"), result)
 	alpha := transcript.GetAndAppendChallenge([]byte("gprod_alpha"))
 
@@ -226,9 +226,9 @@ func Verify(
 		us[i] = betaInvPow
 	}
 	var D, D_M, D_R bls12381.G1Affine
-	D_M.ScalarMultiplication(Gsum, common.FrToBigInt(&betaInv))
-	D_R.ScalarMultiplication(Hsum, common.FrToBigInt(&alpha))
-	D.FromJacobian(B).Sub(&D, &D_M).Add(&D, &D_R)
+	D_M.ScalarMultiplication(&Gsum, common.FrToBigInt(&betaInv))
+	D_R.ScalarMultiplication(&Hsum, common.FrToBigInt(&alpha))
+	D.FromJacobian(&B).Sub(&D, &D_M).Add(&D, &D_R)
 
 	// Step 4
 	Gs := make([]bls12381.G1Affine, len(crs.Gs)+len(crs.Hs))

@@ -54,7 +54,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 		B.AddAssign(&B_L).AddAssign(&B_R)
 
 		proof, err = Prove(
-			&crs,
+			crs,
 			B,
 			result,
 			bs,
@@ -69,10 +69,10 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, numBlinders)
 		ok, err := Verify(
 			proof,
-			&crs,
-			&Gsum,
-			&Hsum,
-			&B,
+			crs,
+			Gsum,
+			Hsum,
+			B,
 			result,
 			numBlinders,
 			transcriptVerifier,
@@ -94,10 +94,10 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 		resultPlusOne.Add(&result, &one)
 		ok, err := Verify(
 			proof,
-			&crs,
-			&Gsum,
-			&Hsum,
-			&B,
+			crs,
+			Gsum,
+			Hsum,
+			B,
 			resultPlusOne, // This is the reason why the verifier should not accept the proof.
 			numBlinders,
 			transcriptVerifier,
@@ -116,12 +116,14 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, numBlinders)
 		randScalar, err := rand.GetFr()
 		require.NoError(t, err)
+
+		B.ScalarMultiplication(&B, common.FrToBigInt(&randScalar)) // This is the reason why the verifier should not accept the proof.
 		ok, err := Verify(
 			proof,
-			&crs,
-			&Gsum,
-			&Hsum,
-			B.ScalarMultiplication(&B, common.FrToBigInt(&randScalar)), // This is the reason why the verifier should not accept the proof.
+			crs,
+			Gsum,
+			Hsum,
+			B,
 			result,
 			numBlinders,
 			transcriptVerifier,

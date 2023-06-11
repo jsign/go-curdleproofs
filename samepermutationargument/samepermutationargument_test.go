@@ -148,8 +148,8 @@ func TestSamePermutationArgument(t *testing.T) {
 		ok, err := Verify(
 			proof,
 			crs,
-			&Gsum,
-			&Hsum,
+			Gsum,
+			Hsum,
 			A,
 			M,
 			as,

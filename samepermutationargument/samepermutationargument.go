@@ -71,7 +71,7 @@ func Prove(
 	}
 
 	gpaproof, err := grandproductargument.Prove(
-		&grandproductargument.CRS{
+		grandproductargument.CRS{
 			Gs: crs.Gs,
 			Hs: crs.Hs,
 			H:  crs.H,
@@ -96,8 +96,8 @@ func Prove(
 func Verify(
 	proof Proof,
 	crs CRS,
-	Gsum *bls12381.G1Affine,
-	Hsum *bls12381.G1Affine,
+	Gsum bls12381.G1Affine,
+	Hsum bls12381.G1Affine,
 	A bls12381.G1Jac,
 	M bls12381.G1Jac,
 	as []fr.Element,
@@ -136,14 +136,14 @@ func Verify(
 
 	ok, err := grandproductargument.Verify(
 		proof.gpaProof,
-		&grandproductargument.CRS{
+		grandproductargument.CRS{
 			Gs: crs.Gs,
 			Hs: crs.Hs,
 			H:  crs.H,
 		},
 		Gsum,
 		Hsum,
-		&proof.B,
+		proof.B,
 		p,
 		numBlinders,
 		transcript,
