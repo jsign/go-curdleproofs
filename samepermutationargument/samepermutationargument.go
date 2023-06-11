@@ -23,7 +23,7 @@ type Proof struct {
 }
 
 func Prove(
-	crs *CRS,
+	crs CRS,
 	A bls12381.G1Jac,
 	M bls12381.G1Jac,
 	as []fr.Element,
