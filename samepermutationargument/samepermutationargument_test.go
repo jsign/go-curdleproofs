@@ -73,7 +73,7 @@ func TestSamePermutationArgument(t *testing.T) {
 		M.Set(&M_L).AddAssign(&M_R)
 
 		proof, err = Prove(
-			&crs,
+			crs,
 			A,
 			M,
 			as,

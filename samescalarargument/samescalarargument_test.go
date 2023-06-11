@@ -61,8 +61,8 @@ func TestProveVerify(t *testing.T) {
 		&crs,
 		&R,
 		&S,
-		cm_T,
-		cm_U,
+		&cm_T,
+		&cm_U,
 		transcriptVerifier,
 	))
 }
