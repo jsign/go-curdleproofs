@@ -62,3 +62,11 @@ func (t *Transcript) GetAndAppendChallenge(label []byte) fr.Element {
 		}
 	}
 }
+
+func (t *Transcript) GetAndAppendChallenges(label []byte, count int) []fr.Element {
+	challenges := make([]fr.Element, count)
+	for i := 0; i < count; i++ {
+		challenges[i] = t.GetAndAppendChallenge(label)
+	}
+	return challenges
+}
