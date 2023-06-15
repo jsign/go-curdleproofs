@@ -73,14 +73,13 @@ func ShufflePermuteCommit(
 	}
 	permRangeFrs := Permute(rangeFrs, perm)
 
-	rs_m, err := rand.GetFrs(N_BLINDERS)
-	if err != nil {
-		return nil, nil, bls12381.G1Jac{}, nil, fmt.Errorf("getting rs_m: %s", err)
-	}
-
 	var M1, M2 bls12381.G1Jac
 	if _, err := M1.MultiExp(crsGs, permRangeFrs, MultiExpConf); err != nil {
 		return nil, nil, bls12381.G1Jac{}, nil, fmt.Errorf("calculating M_1: %s", err)
+	}
+	rs_m, err := rand.GetFrs(N_BLINDERS)
+	if err != nil {
+		return nil, nil, bls12381.G1Jac{}, nil, fmt.Errorf("getting rs_m: %s", err)
 	}
 	if _, err := M2.MultiExp(crsHs, rs_m, MultiExpConf); err != nil {
 		return nil, nil, bls12381.G1Jac{}, nil, fmt.Errorf("calculating M_2: %s", err)
