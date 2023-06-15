@@ -52,7 +52,6 @@ func ShufflePermuteCommit(
 	k fr.Element,
 	rand *Rand,
 ) ([]bls12381.G1Affine, []bls12381.G1Affine, bls12381.G1Jac, []fr.Element, error) {
-
 	biK := FrToBigInt(&k)
 	Ts := make([]bls12381.G1Affine, len(Rs))
 	for i := range Ts {
@@ -64,12 +63,12 @@ func ShufflePermuteCommit(
 		Us[i].ScalarMultiplication(&Ss[i], biK)
 	}
 
-	T := Permute(Ts, perm)
-	U := Permute(Us, perm)
+	Ts = Permute(Ts, perm)
+	Us = Permute(Us, perm)
 
 	rangeFrs := make([]fr.Element, len(crsGs))
 	for i := range perm {
-		rangeFrs[i] = fr.NewElement(uint64(perm[i]))
+		rangeFrs[i] = fr.NewElement(uint64(i))
 	}
 	permRangeFrs := Permute(rangeFrs, perm)
 
@@ -86,5 +85,5 @@ func ShufflePermuteCommit(
 	}
 	M1.AddAssign(&M2)
 
-	return T, U, M1, rs_m, nil
+	return Ts, Us, M1, rs_m, nil
 }

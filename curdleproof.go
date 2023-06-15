@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	zero = bls12381.G1Affine{}
+	zeroPoint = bls12381.G1Affine{}
+	zeroFr    = fr.Element{}
 )
 
 type Proof struct {
@@ -36,14 +37,11 @@ func Prove(
 	Ts []bls12381.G1Affine,
 	Us []bls12381.G1Affine,
 	M bls12381.G1Jac,
-	permutation []uint32,
+	perm []uint32,
 	k fr.Element,
 	rs_m []fr.Element,
 	rand *common.Rand,
 ) (Proof, error) {
-	//         // Number of non-blinder elements used in this proof
-	//         let ell = vec_R.len();
-
 	transcript := transcript.New([]byte("curdleproofs"))
 
 	// Step 1
@@ -57,13 +55,15 @@ func Prove(
 	// Step 2
 	rs_a, err := rand.GetFrs(common.N_BLINDERS - 2)
 	if err != nil {
-		return Proof{}, fmt.Errorf("getting random frs: %s", err)
+		return Proof{}, fmt.Errorf("getting rs_a: %s", err)
 	}
 
-	rs_a_prime := make([]fr.Element, len(rs_a)+1)
-	copy(rs_a_prime, rs_a)
+	rs_a_prime := make([]fr.Element, 0, len(rs_a)+1+1)
+	rs_a_prime = append(rs_a_prime, rs_a...)
+	rs_a_prime = append(rs_a_prime, zeroFr, zeroFr)
 
-	perm_as := common.Permute(as, permutation)
+	perm_as := common.Permute(as, perm)
+
 	var A, A_L, A_R bls12381.G1Jac
 	if _, err := A_L.MultiExp(crs.Gs, perm_as, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("computing A_L: %s", err)
@@ -82,7 +82,7 @@ func Prove(
 		A,
 		M,
 		as,
-		permutation,
+		perm,
 		rs_a_prime,
 		rs_m,
 		transcript,
@@ -152,11 +152,11 @@ func Prove(
 	T_prime = append(T_prime, Ts...)
 	var crsHAffine bls12381.G1Affine
 	crsHAffine.FromJacobian(&crs.H)
-	T_prime = append(T_prime, zero, zero, crsHAffine, zero)
+	T_prime = append(T_prime, zeroPoint, zeroPoint, crsHAffine, zeroPoint)
 
 	U_prime := make([]bls12381.G1Affine, 0, len(Us)+2+1+1)
 	U_prime = append(U_prime, Us...)
-	U_prime = append(U_prime, zero, zero, zero)
+	U_prime = append(U_prime, zeroPoint, zeroPoint, zeroPoint)
 	U_prime = append(U_prime, crsHAffine)
 
 	x := make([]fr.Element, 0, len(perm_as)+len(rs_a)+1+1)
@@ -273,11 +273,11 @@ func Verify(
 	Tsprime = append(Tsprime, Ts...)
 	var HAff bls12381.G1Affine
 	HAff.FromJacobian(&crs.H)
-	Tsprime = append(Tsprime, zero, zero, HAff, zero)
+	Tsprime = append(Tsprime, zeroPoint, zeroPoint, HAff, zeroPoint)
 
 	Usprime := make([]bls12381.G1Affine, 0, len(Us)+2+1+1)
 	Usprime = append(Usprime, Us...)
-	Usprime = append(Usprime, zero, zero, zero, HAff)
+	Usprime = append(Usprime, zeroPoint, zeroPoint, zeroPoint, HAff)
 
 	ok, err = samemultiscalarargument.Verify(
 		proof.proofSameMultiscalar,
