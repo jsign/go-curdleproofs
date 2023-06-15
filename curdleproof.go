@@ -298,8 +298,12 @@ func Verify(
 		return false, nil
 	}
 
-	msmAccumulator.AccumulateCheck(proof.R, as, Rs, rand)
-	msmAccumulator.AccumulateCheck(proof.S, as, Ss, rand)
+	if err := msmAccumulator.AccumulateCheck(proof.R, as, Rs, rand); err != nil {
+		return false, fmt.Errorf("msm accumulator check R, as, Rs: %s", err)
+	}
+	if err := msmAccumulator.AccumulateCheck(proof.S, as, Ss, rand); err != nil {
+		return false, fmt.Errorf("msm accumulator check S, as, Ss: %s", err)
+	}
 
 	ok, err = msmAccumulator.Verify()
 	if err != nil {
