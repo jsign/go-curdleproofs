@@ -38,15 +38,15 @@ func TestProveVerify(t *testing.T) {
 	r_u, err := rand.GetFr()
 	require.NoError(t, err)
 
-	cm_T := groupcommitment.New(&crs.Gt, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&R, common.FrToBigInt(&k)), &r_t)
-	cm_U := groupcommitment.New(&crs.Gu, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&S, common.FrToBigInt(&k)), &r_u)
+	T := groupcommitment.New(&crs.Gt, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&R, common.FrToBigInt(&k)), &r_t)
+	U := groupcommitment.New(&crs.Gu, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&S, common.FrToBigInt(&k)), &r_u)
 
 	proof, err := Prove(
 		&crs,
 		&R,
 		&S,
-		cm_T,
-		cm_U,
+		T,
+		U,
 		&k,
 		&r_t,
 		&r_u,
@@ -57,12 +57,12 @@ func TestProveVerify(t *testing.T) {
 
 	transcriptVerifier := transcript.New([]byte("same_scalar"))
 	require.True(t, Verify(
-		&proof,
-		&crs,
-		&R,
-		&S,
-		&cm_T,
-		&cm_U,
+		proof,
+		crs,
+		R,
+		S,
+		T,
+		U,
 		transcriptVerifier,
 	))
 }
