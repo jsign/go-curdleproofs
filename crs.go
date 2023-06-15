@@ -22,7 +22,7 @@ func GenerateCRS(size int, rand *common.Rand) (CRS, error) {
 	if err != nil {
 		return CRS{}, fmt.Errorf("gen gs: %s", err)
 	}
-	hs, err := rand.GetG1Affines(N_BLINDERS)
+	hs, err := rand.GetG1Affines(common.N_BLINDERS)
 	if err != nil {
 		return CRS{}, fmt.Errorf("gen hs: %s", err)
 	}

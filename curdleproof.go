@@ -14,10 +14,6 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
-const (
-	N_BLINDERS = 4
-)
-
 var (
 	zero = bls12381.G1Affine{}
 )
@@ -59,7 +55,7 @@ func Prove(
 	as := transcript.GetAndAppendChallenges([]byte("curdleproofs_vec_a"), len(Rs))
 
 	// Step 2
-	rs_a, err := rand.GetFrs(N_BLINDERS - 2)
+	rs_a, err := rand.GetFrs(common.N_BLINDERS - 2)
 	if err != nil {
 		return Proof{}, fmt.Errorf("getting random frs: %s", err)
 	}
@@ -146,9 +142,9 @@ func Prove(
 	A_prime.AddAssign(&T.T_1)
 	A_prime.AddAssign(&U.T_1)
 
-	G := make([]bls12381.G1Affine, 0, len(crs.Gs)+(N_BLINDERS-2)+1+1)
+	G := make([]bls12381.G1Affine, 0, len(crs.Gs)+(common.N_BLINDERS-2)+1+1)
 	G = append(G, crs.Gs...)
-	G = append(G, crs.Hs[:N_BLINDERS-2]...)
+	G = append(G, crs.Hs[:common.N_BLINDERS-2]...)
 	gxaffine := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{crs.Gt, crs.Gu})
 	G = append(G, gxaffine...)
 
@@ -234,7 +230,7 @@ func Verify(
 		proof.A,
 		M,
 		as,
-		N_BLINDERS,
+		common.N_BLINDERS,
 		transcript,
 		msmAccumulator,
 		rand,
@@ -267,9 +263,9 @@ func Verify(
 	Aprime := proof.A
 	Aprime.AddAssign(&proof.T.T_1).AddAssign(&proof.U.T_1)
 
-	Gs := make([]bls12381.G1Affine, 0, len(crs.Gs)+(N_BLINDERS-2)+1+1)
+	Gs := make([]bls12381.G1Affine, 0, len(crs.Gs)+(common.N_BLINDERS-2)+1+1)
 	Gs = append(Gs, crs.Gs...)
-	Gs = append(Gs, crs.Hs[:N_BLINDERS-2]...)
+	Gs = append(Gs, crs.Hs[:common.N_BLINDERS-2]...)
 	gaffs := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{crs.Gt, crs.Gu})
 	Gs = append(Gs, gaffs...)
 
