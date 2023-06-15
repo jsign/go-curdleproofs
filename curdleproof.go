@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/groupcommitment"
+	"github.com/jsign/curdleproofs/msmaccumulator"
 	"github.com/jsign/curdleproofs/samemultiscalarargument"
 	"github.com/jsign/curdleproofs/samepermutationargument"
 	"github.com/jsign/curdleproofs/samescalarargument"
@@ -192,4 +193,121 @@ func Prove(
 		proofSameScalar,
 		proofSameMultiscalar,
 	}, nil
+}
+
+func Verify(
+	proof Proof,
+	crs CRS,
+	Rs []bls12381.G1Affine,
+	Ss []bls12381.G1Affine,
+	Ts []bls12381.G1Affine,
+	Us []bls12381.G1Affine,
+	M bls12381.G1Jac,
+	rand *common.Rand,
+) (bool, error) {
+	transcript := transcript.New([]byte("curdleproofs"))
+	msmAccumulator := msmaccumulator.New()
+
+	// Make sure that randomizer was not the zero element (and wiped out the ciphertexts)
+	if Ts[0].IsInfinity() {
+		return false, fmt.Errorf("randomizer is zero")
+	}
+
+	// Step 1
+	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Rs...)
+	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ss...)
+	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ts...)
+	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Us...)
+	transcript.AppendPoints([]byte("curdleproofs_step1"), &M)
+	as := transcript.GetAndAppendChallenges([]byte("curdleproofs_vec_a"), len(Rs))
+
+	// Step 2
+	ok, err := samepermutationargument.Verify(
+		proof.proofSamePermutation,
+		samepermutationargument.CRS{
+			Gs: crs.Gs,
+			Hs: crs.Hs,
+			H:  crs.H,
+		},
+		crs.Gsum,
+		crs.Hsum,
+		proof.A,
+		M,
+		as,
+		N_BLINDERS,
+		transcript,
+		msmAccumulator,
+		rand,
+	)
+	if err != nil {
+		return false, fmt.Errorf("verifying same permutation: %s", err)
+	}
+	if !ok {
+		return false, nil
+	}
+
+	// Step 3
+	if ok := samescalarargument.Verify(
+		proof.proofSameScalar,
+		samescalarargument.CRS{
+			Gt: crs.Gt,
+			Gu: crs.Gu,
+			H:  crs.H,
+		},
+		proof.R,
+		proof.S,
+		proof.T,
+		proof.U,
+		transcript,
+	); !ok {
+		return false, nil
+	}
+
+	// Step 4
+	Aprime := proof.A
+	Aprime.AddAssign(&proof.T.T_1).AddAssign(&proof.U.T_1)
+
+	Gs := make([]bls12381.G1Affine, 0, len(crs.Gs)+(N_BLINDERS-2)+1+1)
+	Gs = append(Gs, crs.Gs...)
+	Gs = append(Gs, crs.Hs[:N_BLINDERS-2]...)
+	gaffs := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{crs.Gt, crs.Gu})
+	Gs = append(Gs, gaffs...)
+
+	Tsprime := make([]bls12381.G1Affine, 0, len(Ts)+2+1+1)
+	Tsprime = append(Tsprime, Ts...)
+	var HAff bls12381.G1Affine
+	HAff.FromJacobian(&crs.H)
+	Tsprime = append(Tsprime, zero, zero, HAff, zero)
+
+	Usprime := make([]bls12381.G1Affine, 0, len(Us)+2+1+1)
+	Usprime = append(Usprime, Us...)
+	Usprime = append(Usprime, zero, zero, zero, HAff)
+
+	ok, err = samemultiscalarargument.Verify(
+		proof.proofSameMultiscalar,
+		Gs,
+		Aprime,
+		proof.T.T_2,
+		proof.U.T_2,
+		Tsprime,
+		Usprime,
+		transcript,
+		msmAccumulator,
+		rand,
+	)
+	if err != nil {
+		return false, fmt.Errorf("verifying same multiscalar: %s", err)
+	}
+	if !ok {
+		return false, nil
+	}
+
+	msmAccumulator.AccumulateCheck(proof.R, as, Rs, rand)
+	msmAccumulator.AccumulateCheck(proof.S, as, Ss, rand)
+
+	ok, err = msmAccumulator.Verify()
+	if err != nil {
+		return false, fmt.Errorf("verifying msm accumulator: %s", err)
+	}
+	return ok, nil
 }
