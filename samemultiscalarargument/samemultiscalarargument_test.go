@@ -76,11 +76,11 @@ func TestSameMultiscalarArgument(t *testing.T) {
 		msmAccumulator := msmaccumulator.New()
 
 		ok, err := Verify(
-			&proof,
+			proof,
 			crs_G_vec,
-			A,
-			Z_t,
-			Z_u,
+			*A,
+			*Z_t,
+			*Z_u,
 			vec_T,
 			vec_U,
 			transcriptVerifier,

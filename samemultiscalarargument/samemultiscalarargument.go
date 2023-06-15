@@ -153,11 +153,11 @@ func Prove(
 }
 
 func Verify(
-	proof *Proof,
+	proof Proof,
 	G []bls12381.G1Affine,
-	A *bls12381.G1Jac,
-	Z_t *bls12381.G1Jac,
-	Z_u *bls12381.G1Jac,
+	A bls12381.G1Jac,
+	Z_t bls12381.G1Jac,
+	Z_u bls12381.G1Jac,
 	T []bls12381.G1Affine,
 	U []bls12381.G1Affine,
 	transcript *transcript.Transcript,
@@ -166,13 +166,13 @@ func Verify(
 ) (bool, error) {
 	n := len(T)
 
-	transcript.AppendPoints([]byte("same_msm_step1"), A, Z_t, Z_u)
+	transcript.AppendPoints([]byte("same_msm_step1"), &A, &Z_t, &Z_u)
 	transcript.AppendPointsAffine([]byte("same_msm_step1"), T...)
 	transcript.AppendPointsAffine([]byte("same_msm_step1"), U...)
 	transcript.AppendPoints([]byte("same_msm_step1"), proof.B_a, proof.B_t, proof.B_u)
 	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
 
-	gamma, gamma_inv, s, err := unfoldedScalars(proof, n, transcript)
+	gamma, gamma_inv, s, err := unfoldedScalars(&proof, n, transcript)
 	if err != nil {
 		return false, fmt.Errorf("computing verification scalars: %s", err)
 	}
@@ -184,11 +184,11 @@ func Verify(
 
 	var A_a, Z_t_a, Z_u_a bls12381.G1Jac
 	A_a.Set(proof.B_a)
-	A_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(A, common.FrToBigInt(&alpha)))
+	A_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&A, common.FrToBigInt(&alpha)))
 	Z_t_a.Set(proof.B_t)
-	Z_t_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(Z_t, common.FrToBigInt(&alpha)))
+	Z_t_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&Z_t, common.FrToBigInt(&alpha)))
 	Z_u_a.Set(proof.B_u)
-	Z_u_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(Z_u, common.FrToBigInt(&alpha)))
+	Z_u_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&Z_u, common.FrToBigInt(&alpha)))
 
 	var l, p, r bls12381.G1Jac
 	L_A_Affine := bls12381.BatchJacobianToAffineG1(proof.L_A)
