@@ -33,10 +33,10 @@ func IPA(a []fr.Element, b []fr.Element) fr.Element {
 	return res
 }
 
-func Permute(vs []fr.Element, perm []uint32) []fr.Element {
-	ret := make([]fr.Element, len(vs))
+func Permute[T any](vs []T, perm []uint32) []T {
+	ret := make([]T, len(vs))
 	for i := range perm {
-		ret[i].Set(&vs[perm[i]])
+		ret[i] = vs[perm[i]]
 	}
 	return ret
 }
