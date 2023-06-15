@@ -17,12 +17,12 @@ type CRS struct {
 	Hsum bls12381.G1Affine
 }
 
-func GenerateCRS(size int, rand common.Rand) (CRS, error) {
+func GenerateCRS(size int, rand *common.Rand) (CRS, error) {
 	gs, err := rand.GetG1Affines(size)
 	if err != nil {
 		return CRS{}, fmt.Errorf("gen gs: %s", err)
 	}
-	hs, err := rand.GetG1Affines(size)
+	hs, err := rand.GetG1Affines(N_BLINDERS)
 	if err != nil {
 		return CRS{}, fmt.Errorf("gen hs: %s", err)
 	}
