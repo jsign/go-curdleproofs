@@ -31,6 +31,13 @@ type CRS struct {
 	H  bls12381.G1Jac
 }
 
+var (
+	labelGprodStep1 = []byte("gprod_step1")
+	labelGprodStep2 = []byte("gprod_step2")
+	labelGrpodAlpha = []byte("gprod_alpha")
+	labelGprodBeta  = []byte("gprod_beta")
+)
+
 func Prove(
 	crs CRS,
 	B bls12381.G1Jac,
@@ -41,9 +48,9 @@ func Prove(
 	rand *common.Rand,
 ) (Proof, error) {
 	// Step 1.
-	transcript.AppendPoints([]byte("gprod_step1"), &B)
-	transcript.AppendScalars([]byte("gprod_step1"), result)
-	alpha := transcript.GetAndAppendChallenge([]byte("gprod_alpha"))
+	transcript.AppendPoints(labelGprodStep1, &B)
+	transcript.AppendScalars(labelGprodStep1, result)
+	alpha := transcript.GetAndAppendChallenge(labelGrpodAlpha)
 
 	// Step 2.
 	cs := make([]fr.Element, len(crs.Gs))
@@ -73,9 +80,9 @@ func Prove(
 		return Proof{}, fmt.Errorf("compute r_p: %s", err)
 	}
 
-	transcript.AppendPoints([]byte("gprod_step2"), &C)
-	transcript.AppendScalars([]byte("gprod_step2"), r_p)
-	beta := transcript.GetAndAppendChallenge([]byte("gprod_beta"))
+	transcript.AppendPoints(labelGprodStep2, &C)
+	transcript.AppendScalars(labelGprodStep2, r_p)
+	beta := transcript.GetAndAppendChallenge(labelGprodBeta)
 	if beta.IsZero() {
 		return Proof{}, fmt.Errorf("beta is zero")
 	}
@@ -208,14 +215,14 @@ func Verify(
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1
-	transcript.AppendPoints([]byte("gprod_step1"), &B)
-	transcript.AppendScalars([]byte("gprod_step1"), result)
-	alpha := transcript.GetAndAppendChallenge([]byte("gprod_alpha"))
+	transcript.AppendPoints(labelGprodStep1, &B)
+	transcript.AppendScalars(labelGprodStep1, result)
+	alpha := transcript.GetAndAppendChallenge(labelGrpodAlpha)
 
 	// Step 2
-	transcript.AppendPoints([]byte("gprod_step2"), &proof.C)
-	transcript.AppendScalars([]byte("gprod_step2"), proof.Rp)
-	beta := transcript.GetAndAppendChallenge([]byte("gprod_beta"))
+	transcript.AppendPoints(labelGprodStep2, &proof.C)
+	transcript.AppendScalars(labelGprodStep2, proof.Rp)
+	beta := transcript.GetAndAppendChallenge(labelGprodBeta)
 	if beta.IsZero() {
 		return false, fmt.Errorf("beta is zero")
 	}
