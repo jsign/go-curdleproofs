@@ -46,15 +46,25 @@ func (r *Rand) GetFr() (fr.Element, error) {
 	}
 }
 
-func (r *Rand) GetG1Jac() (bls12381.G1Jac, error) {
-	scalar, err := r.GetFr()
-	if err != nil {
-		return bls12381.G1Jac{}, fmt.Errorf("get random Fr: %s", err)
+func (r *Rand) GetFrs(n int) ([]fr.Element, error) {
+	var err error
+	ret := make([]fr.Element, n)
+	for i := 0; i < n; i++ {
+		ret[i], err = r.GetFr()
+		if err != nil {
+			return nil, fmt.Errorf("get random Fr: %s", err)
+		}
 	}
-	var scalarBigInt big.Int
-	scalar.BigInt(&scalarBigInt)
+	return ret, nil
+}
+
+func (r *Rand) GetG1Jac() (bls12381.G1Jac, error) {
+	aff, err := r.GetG1Affine()
+	if err != nil {
+		return bls12381.G1Jac{}, fmt.Errorf("get random G1Affine: %s", err)
+	}
 	var res bls12381.G1Jac
-	res.ScalarMultiplication(&r.genG1Jac, &scalarBigInt)
+	res.FromAffine(&aff)
 
 	return res, nil
 }
@@ -75,22 +85,10 @@ func (r *Rand) GetG1Affine() (bls12381.G1Affine, error) {
 func (r *Rand) GetG1Affines(n int) ([]bls12381.G1Affine, error) {
 	var err error
 	ret := make([]bls12381.G1Affine, n)
-	for i := 0; i < n; i++ {
+	for i := range ret {
 		ret[i], err = r.GetG1Affine()
 		if err != nil {
 			return nil, fmt.Errorf("get random G1Affine: %s", err)
-		}
-	}
-	return ret, nil
-}
-
-func (r *Rand) GetFrs(n int) ([]fr.Element, error) {
-	var err error
-	ret := make([]fr.Element, n)
-	for i := 0; i < n; i++ {
-		ret[i], err = r.GetFr()
-		if err != nil {
-			return nil, fmt.Errorf("get random Fr: %s", err)
 		}
 	}
 	return ret, nil
