@@ -47,14 +47,24 @@ func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([
 	// Consider first equation: <r, d> + <z, c> == 0
 	// <=> r_1 * d_1 + ... + r_n * d_n + z_1 * c_1 + ... + z_{n-1} * c_{n-1} + z_n * c_n == 0
 	// The last two products contain the unknowns whereas all the previous is a known quantity `omega` -- let's compute it below
-	omegaL := common.IPA(rs, ds)
-	omegaR := common.IPA(zs[:n-2], cs[:n-2])
+	omegaL, err := common.IPA(rs, ds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute omegaL: %s", err)
+	}
+
+	omegaR, err := common.IPA(zs[:n-2], cs[:n-2])
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute omegaR: %s", err)
+	}
 	var omega fr.Element
 	omega.Add(&omegaL, &omegaR)
 	// Now let's consider the second equation: <r, z> == 0
 	// <=> r_1 * z_1 + ... r_{n-1} * z_{n-1} * r_n * z_n == 0
 	// Again, the last two products contain the unknowns whereas all the previous is a known quantity `delta` -- let's compute it below
-	delta := common.IPA(rs[:n-2], zs[:n-2])
+	delta, err := common.IPA(rs[:n-2], zs[:n-2])
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute delta: %s", err)
+	}
 
 	// Solving the first equation for z_{n-1} we get:
 	//
@@ -90,12 +100,21 @@ func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([
 	zs = append(zs, penultimate_z, last_z)
 
 	// Make sure the constraints were satisfied
-	checkTerm1 := common.IPA(rs, ds)
-	checkTerm2 := common.IPA(zs, cs)
+	checkTerm1, err := common.IPA(rs, ds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute checkTerm1: %s", err)
+	}
+	checkTerm2, err := common.IPA(zs, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute checkTerm2: %s", err)
+	}
 	if !checkTerm1.Add(&checkTerm1, &checkTerm2).IsZero() {
 		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
 	}
-	check := common.IPA(rs, zs)
+	check, err := common.IPA(rs, zs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute check: %s", err)
+	}
 	if !check.IsZero() {
 		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
 	}
@@ -172,7 +191,10 @@ func Prove(
 		if _, err := L_C_L.MultiExp(G_R, c_L, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("ipa L_C_1 multiexp: %s", err)
 		}
-		ipaCLDR := common.IPA(c_L, d_R)
+		ipaCLDR, err := common.IPA(c_L, d_R)
+		if err != nil {
+			return Proof{}, fmt.Errorf("ipa L_C_2 multiexp: %s", err)
+		}
 		L_C_R.ScalarMultiplication(&H, common.FrToBigInt(&ipaCLDR))
 		L_C.Set(&L_C_L)
 		L_C.AddAssign(&L_C_R)
@@ -186,7 +208,10 @@ func Prove(
 		if _, err := R_C_L.MultiExp(G_L, c_R, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("ipa R_C_1 multiexp: %s", err)
 		}
-		ipaCRDL := common.IPA(c_R, d_L)
+		ipaCRDL, err := common.IPA(c_R, d_L)
+		if err != nil {
+			return Proof{}, fmt.Errorf("ipa R_C_2 multiexp: %s", err)
+		}
 		R_C_R.ScalarMultiplication(&H, common.FrToBigInt(&ipaCRDL))
 		R_C.Set(&R_C_L)
 		R_C.AddAssign(&R_C_R)

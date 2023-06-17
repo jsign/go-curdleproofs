@@ -68,7 +68,11 @@ func Prove(
 	for i := range r_b_plus_alpha {
 		r_b_plus_alpha[i].Add(&r_bs[i], &alpha)
 	}
-	r_p := common.IPA(r_b_plus_alpha, r_cs)
+	r_p, err := common.IPA(r_b_plus_alpha, r_cs)
+	if err != nil {
+		return Proof{}, fmt.Errorf("compute r_p: %s", err)
+	}
+
 	transcript.AppendPoints([]byte("gprod_step2"), &C)
 	transcript.AppendScalars([]byte("gprod_step2"), r_p)
 	beta := transcript.GetAndAppendChallenge([]byte("gprod_beta"))
@@ -141,8 +145,11 @@ func Prove(
 	cs = append(cs, r_cs...)
 	ds = append(ds, r_ds...)
 
-	// TODO(jsign): make sanity checks optional.
-	ipaC_D := common.IPA(cs, ds)
+	ipaC_D, err := common.IPA(cs, ds)
+	if err != nil {
+		return Proof{}, fmt.Errorf("compute IPA(C, D): %s", err)
+	}
+
 	if !ipaC_D.Equal(&z) {
 		return Proof{}, fmt.Errorf("IPA(C, D) != z")
 	}

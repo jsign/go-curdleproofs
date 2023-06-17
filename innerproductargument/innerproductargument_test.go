@@ -45,7 +45,8 @@ func TestInnerProductArgument(t *testing.T) {
 		cs, err := rand.GetFrs(n)
 		require.NoError(t, err)
 
-		z := common.IPA(bs, cs)
+		z, err := common.IPA(bs, cs)
+		require.NoError(t, err)
 
 		// Create commitments
 		var B bls12381.G1Jac
@@ -100,7 +101,8 @@ func TestInnerProductArgument(t *testing.T) {
 		cs, err := rando.GetFrs(n)
 		require.NoError(t, err)
 
-		z := common.IPA(bs, cs)
+		z, err := common.IPA(bs, cs)
+		require.NoError(t, err)
 
 		// Create commitments
 		var B bls12381.G1Jac

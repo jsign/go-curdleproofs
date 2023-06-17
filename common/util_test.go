@@ -20,7 +20,9 @@ func TestIPA(t *testing.T) {
 		fr.NewElement(4),
 		fr.NewElement(5),
 	}
-	got := IPA(a, b)
+	got, err := IPA(a, b)
+	require.NoError(t, err)
+
 	exp := fr.NewElement(40)
 	require.True(t, exp.Equal(&got))
 }

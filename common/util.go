@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"runtime"
@@ -22,17 +23,15 @@ func SplitAt[T any](s []T, n uint) ([]T, []T) {
 	return s[:n], s[n:]
 }
 
-func IPA(a []fr.Element, b []fr.Element) fr.Element {
+func IPA(a []fr.Element, b []fr.Element) (fr.Element, error) {
 	if len(a) != len(b) {
-		panic("IPA: len(a) != len(b)")
+		return fr.Element{}, errors.New("IPA: len(a) != len(b)")
 	}
-	var res fr.Element
+	var res, tmp fr.Element
 	for i := range a {
-		var term fr.Element
-		term.Mul(&a[i], &b[i])
-		res.Add(&res, &term)
+		res.Add(&res, tmp.Mul(&a[i], &b[i]))
 	}
-	return res
+	return res, nil
 }
 
 func Permute[T any](vs []T, perm []uint32) []T {
@@ -70,10 +69,10 @@ func ShufflePermuteCommit(
 	for i := range perm {
 		rangeFrs[i] = fr.NewElement(uint64(i))
 	}
-	permRangeFrs := Permute(rangeFrs, perm)
 
-	var M1, M2 bls12381.G1Jac
-	if _, err := M1.MultiExp(crsGs, permRangeFrs, MultiExpConf); err != nil {
+	permRangeFrs := Permute(rangeFrs, perm)
+	var M, M2 bls12381.G1Jac
+	if _, err := M.MultiExp(crsGs, permRangeFrs, MultiExpConf); err != nil {
 		return nil, nil, bls12381.G1Jac{}, nil, fmt.Errorf("calculating M_1: %s", err)
 	}
 	rs_m, err := rand.GetFrs(N_BLINDERS)
@@ -83,7 +82,7 @@ func ShufflePermuteCommit(
 	if _, err := M2.MultiExp(crsHs, rs_m, MultiExpConf); err != nil {
 		return nil, nil, bls12381.G1Jac{}, nil, fmt.Errorf("calculating M_2: %s", err)
 	}
-	M1.AddAssign(&M2)
+	M.AddAssign(&M2)
 
-	return Ts, Us, M1, rs_m, nil
+	return Ts, Us, M, rs_m, nil
 }
