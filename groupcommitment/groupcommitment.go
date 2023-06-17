@@ -12,16 +12,15 @@ type GroupCommitment struct {
 }
 
 func New(
-	crs_G, crs_H *bls12381.G1Jac,
-	T *bls12381.G1Jac,
-	r *fr.Element,
+	crsG bls12381.G1Jac,
+	crsH bls12381.G1Jac,
+	T bls12381.G1Jac,
+	r fr.Element,
 ) GroupCommitment {
-	var T_1 bls12381.G1Jac
-	T_1.ScalarMultiplication(crs_G, common.FrToBigInt(r))
+	var T_1, T_2, tmp bls12381.G1Jac
+	T_1.ScalarMultiplication(&crsG, common.FrToBigInt(&r))
+	T_2.Set(&T).AddAssign(tmp.ScalarMultiplication(&crsH, common.FrToBigInt(&r)))
 
-	var T_2 bls12381.G1Jac
-	T_2.Set(T)
-	T_2.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(crs_H, common.FrToBigInt(r)))
 	return GroupCommitment{
 		T_1: T_1,
 		T_2: T_2,
@@ -30,10 +29,9 @@ func New(
 
 func (t *GroupCommitment) Add(cm GroupCommitment) GroupCommitment {
 	ret := GroupCommitment{}
-	ret.T_1.Set(&t.T_1)
-	ret.T_1.AddAssign(&cm.T_1)
-	ret.T_2.Set(&t.T_2)
-	ret.T_2.AddAssign(&cm.T_2)
+	ret.T_1.Set(&t.T_1).AddAssign(&cm.T_1)
+	ret.T_2.Set(&t.T_2).AddAssign(&cm.T_2)
+
 	return ret
 }
 
@@ -42,6 +40,7 @@ func (t *GroupCommitment) Mul(scalar fr.Element) GroupCommitment {
 	ret := GroupCommitment{}
 	ret.T_1.ScalarMultiplication(&t.T_1, bigIntScalar)
 	ret.T_2.ScalarMultiplication(&t.T_2, bigIntScalar)
+
 	return ret
 }
 

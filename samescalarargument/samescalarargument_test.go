@@ -38,8 +38,9 @@ func TestProveVerify(t *testing.T) {
 	r_u, err := rand.GetFr()
 	require.NoError(t, err)
 
-	T := groupcommitment.New(&crs.Gt, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&R, common.FrToBigInt(&k)), &r_t)
-	U := groupcommitment.New(&crs.Gu, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&S, common.FrToBigInt(&k)), &r_u)
+	var tmp bls12381.G1Jac
+	T := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, common.FrToBigInt(&k)), r_t)
+	U := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, common.FrToBigInt(&k)), r_u)
 
 	proof, err := Prove(
 		&crs,

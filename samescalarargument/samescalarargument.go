@@ -42,8 +42,9 @@ func Prove(
 	var bi_r_k big.Int
 	r_k.BigInt(&bi_r_k)
 
-	cm_A := groupcommitment.New(&crs.Gt, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(R, &bi_r_k), &r_a)
-	cm_B := groupcommitment.New(&crs.Gu, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(S, &bi_r_k), &r_b)
+	var tmp bls12381.G1Jac
+	cm_A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(R, &bi_r_k), r_a)
+	cm_B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(S, &bi_r_k), r_b)
 
 	transcript.AppendPoints([]byte("sameexp_points"),
 		R, S,
@@ -85,8 +86,9 @@ func Verify(
 	)
 	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
 
-	expected_1 := groupcommitment.New(&crs.Gt, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&R, common.FrToBigInt(&proof.Z_k)), &proof.Z_t)
-	expected_2 := groupcommitment.New(&crs.Gu, &crs.H, (&bls12381.G1Jac{}).ScalarMultiplication(&S, common.FrToBigInt(&proof.Z_k)), &proof.Z_u)
+	var tmp bls12381.G1Jac
+	expected_1 := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, common.FrToBigInt(&proof.Z_k)), proof.Z_t)
+	expected_2 := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, common.FrToBigInt(&proof.Z_k)), proof.Z_u)
 
 	if proof.Cm_A.Add(T.Mul(alpha)).Eq(&expected_1) &&
 		proof.Cm_B.Add(U.Mul(alpha)).Eq(&expected_2) {

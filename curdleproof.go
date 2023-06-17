@@ -112,9 +112,9 @@ func Prove(
 
 	var tmp bls12381.G1Jac
 	tmp.ScalarMultiplication(&R, common.FrToBigInt(&k))
-	T := groupcommitment.New(&crs.Gt, &crs.H, &tmp, &r_t)
+	T := groupcommitment.New(crs.Gt, crs.H, tmp, r_t)
 	tmp.ScalarMultiplication(&S, common.FrToBigInt(&k))
-	U := groupcommitment.New(&crs.Gu, &crs.H, &tmp, &r_u)
+	U := groupcommitment.New(crs.Gu, crs.H, tmp, r_u)
 
 	// TODO(jsign): enforce assumption in callees about mutation of parameters.
 	proofSameScalar, err := samescalarargument.Prove(
