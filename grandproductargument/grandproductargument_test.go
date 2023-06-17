@@ -11,12 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGrandProductArgumentCompleteness(t *testing.T) {
+func TestCompletenessAndSoundess(t *testing.T) {
 	t.Parallel()
 
 	n := 128
-	numBlinders := 4
-
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)
 
@@ -24,9 +22,9 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 	{
 		transcriptProver := transcript.New([]byte("gprod"))
 
-		crsGs, err := rand.GetG1Affines(n - numBlinders)
+		crsGs, err := rand.GetG1Affines(n - common.N_BLINDERS)
 		require.NoError(t, err)
-		crsHs, err := rand.GetG1Affines(numBlinders)
+		crsHs, err := rand.GetG1Affines(common.N_BLINDERS)
 		require.NoError(t, err)
 		crsH, err := rand.GetG1Jac()
 		require.NoError(t, err)
@@ -36,9 +34,9 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 			H:  crsH,
 		}
 
-		bs, err := rand.GetFrs(n - numBlinders)
+		bs, err := rand.GetFrs(n - common.N_BLINDERS)
 		require.NoError(t, err)
-		r_bs, err := rand.GetFrs(numBlinders)
+		r_bs, err := rand.GetFrs(common.N_BLINDERS)
 		require.NoError(t, err)
 
 		result := fr.One()
@@ -66,7 +64,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 	}
 
 	t.Run("Completeness", func(t *testing.T) {
-		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, numBlinders)
+		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, common.N_BLINDERS)
 		ok, err := Verify(
 			proof,
 			crs,
@@ -74,7 +72,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 			Hsum,
 			B,
 			result,
-			numBlinders,
+			common.N_BLINDERS,
 			transcriptVerifier,
 			msmAccumulator,
 			rand,
@@ -88,7 +86,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 	})
 
 	t.Run("Soundness - Wrong result", func(t *testing.T) {
-		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, numBlinders)
+		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, common.N_BLINDERS)
 		one := fr.One()
 		var resultPlusOne fr.Element
 		resultPlusOne.Add(&result, &one)
@@ -99,7 +97,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 			Hsum,
 			B,
 			resultPlusOne, // This is the reason why the verifier should not accept the proof.
-			numBlinders,
+			common.N_BLINDERS,
 			transcriptVerifier,
 			msmAccumulator,
 			rand,
@@ -113,7 +111,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 	})
 
 	t.Run("Soundness - Wrong commitment to Bs", func(t *testing.T) {
-		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, numBlinders)
+		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, common.N_BLINDERS)
 		randScalar, err := rand.GetFr()
 		require.NoError(t, err)
 
@@ -125,7 +123,7 @@ func TestGrandProductArgumentCompleteness(t *testing.T) {
 			Hsum,
 			B,
 			result,
-			numBlinders,
+			common.N_BLINDERS,
 			transcriptVerifier,
 			msmAccumulator,
 			rand,
