@@ -28,9 +28,9 @@ type Proof struct {
 
 func Prove(
 	G []bls12381.G1Affine,
-	A *bls12381.G1Jac,
-	Z_t *bls12381.G1Jac,
-	Z_u *bls12381.G1Jac,
+	A bls12381.G1Jac,
+	Z_t bls12381.G1Jac,
+	Z_u bls12381.G1Jac,
 	T []bls12381.G1Affine,
 	U []bls12381.G1Affine,
 
@@ -67,7 +67,7 @@ func Prove(
 		return Proof{}, fmt.Errorf("computing B_u: %s", err)
 	}
 
-	transcript.AppendPoints([]byte("same_msm_step1"), A, Z_t, Z_u)
+	transcript.AppendPoints([]byte("same_msm_step1"), &A, &Z_t, &Z_u)
 	transcript.AppendPointsAffine([]byte("same_msm_step1"), T...)
 	transcript.AppendPointsAffine([]byte("same_msm_step1"), U...)
 	transcript.AppendPoints([]byte("same_msm_step1"), B_a, B_t, B_u)

@@ -166,9 +166,9 @@ func Prove(
 
 	proofSameMultiscalar, err := samemultiscalarargument.Prove(
 		G,
-		&A_prime,
-		&T.T_2,
-		&U.T_2,
+		A_prime,
+		T.T_2,
+		U.T_2,
 		T_prime,
 		U_prime,
 		x,
