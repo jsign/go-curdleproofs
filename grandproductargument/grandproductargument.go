@@ -267,8 +267,8 @@ func Verify(
 	var DAffine bls12381.G1Jac
 	DAffine.FromAffine(&D) // TODO(jsign): despite doesn't require inversion, see if we can avoid this.
 	ok, err := innerproductargument.Verify(
-		&proof.IPAProof,
-		&ipaCRS,
+		proof.IPAProof,
+		ipaCRS,
 		proof.C,
 		DAffine,
 		z,

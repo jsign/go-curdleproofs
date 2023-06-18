@@ -187,8 +187,8 @@ func Prove(
 }
 
 func Verify(
-	proof *Proof,
-	crs *CRS,
+	proof Proof,
+	crs CRS,
 	C bls12381.G1Jac,
 	D bls12381.G1Jac,
 	z fr.Element,

@@ -44,8 +44,8 @@ func TestInnerProductArgument(t *testing.T) {
 		require.NoError(t, err)
 
 		ok, err := Verify(
-			&proof,
-			&crs,
+			proof,
+			crs,
 			B,
 			C,
 			z,
