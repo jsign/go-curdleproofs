@@ -13,7 +13,6 @@ func TestCurdleproof(t *testing.T) {
 	t.Parallel()
 
 	n := 64
-	numBlinders := 4
 
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)
@@ -21,7 +20,7 @@ func TestCurdleproof(t *testing.T) {
 	crs, err := GenerateCRS(n-common.N_BLINDERS, rand)
 	require.NoError(t, err)
 
-	perm := make([]uint32, n-numBlinders)
+	perm := make([]uint32, n-common.N_BLINDERS)
 	for i := range perm {
 		perm[i] = uint32(i)
 	}

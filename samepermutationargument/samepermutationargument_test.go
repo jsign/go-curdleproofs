@@ -17,7 +17,6 @@ func TestSamePermutationArgument(t *testing.T) {
 	t.Parallel()
 
 	n := 128
-	numBlinders := 4
 
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)
@@ -26,9 +25,9 @@ func TestSamePermutationArgument(t *testing.T) {
 	{
 		transcriptProver := transcript.New([]byte("sameperm"))
 
-		crsGs, err := rand.GetG1Affines(n - numBlinders)
+		crsGs, err := rand.GetG1Affines(n - common.N_BLINDERS)
 		require.NoError(t, err)
-		crsHs, err := rand.GetG1Affines(numBlinders)
+		crsHs, err := rand.GetG1Affines(common.N_BLINDERS)
 		require.NoError(t, err)
 		crsH, err := rand.GetG1Jac()
 		require.NoError(t, err)
@@ -38,23 +37,23 @@ func TestSamePermutationArgument(t *testing.T) {
 			H:  crsH,
 		}
 
-		rs_a, err := rand.GetFrs(numBlinders)
+		rs_a, err := rand.GetFrs(common.N_BLINDERS)
 		require.NoError(t, err)
-		rs_m, err := rand.GetFrs(numBlinders)
+		rs_m, err := rand.GetFrs(common.N_BLINDERS)
 		require.NoError(t, err)
 
-		perm := make([]uint32, n-numBlinders)
+		perm := make([]uint32, n-common.N_BLINDERS)
 		for i := range perm {
 			perm[i] = uint32(i)
 		}
 		srand := mrand.New(mrand.NewSource(42))
 		srand.Shuffle(len(perm), func(i, j int) { perm[i], perm[j] = perm[j], perm[i] })
-		permFrs := make([]fr.Element, n-numBlinders)
+		permFrs := make([]fr.Element, n-common.N_BLINDERS)
 		for i := range perm {
 			permFrs[i] = fr.NewElement(uint64(perm[i]))
 		}
 
-		as, err := rand.GetFrs(n - numBlinders)
+		as, err := rand.GetFrs(n - common.N_BLINDERS)
 		require.NoError(t, err)
 		permAs := common.Permute(as, perm)
 
@@ -90,9 +89,9 @@ func TestSamePermutationArgument(t *testing.T) {
 		rando, err := common.NewRand(0)
 		require.NoError(t, err)
 
-		crsGs, err := rando.GetG1Affines(n - numBlinders)
+		crsGs, err := rando.GetG1Affines(n - common.N_BLINDERS)
 		require.NoError(t, err)
-		crsHs, err := rando.GetG1Affines(numBlinders)
+		crsHs, err := rando.GetG1Affines(common.N_BLINDERS)
 		require.NoError(t, err)
 		crsH, err := rando.GetG1Jac()
 		require.NoError(t, err)
@@ -112,22 +111,22 @@ func TestSamePermutationArgument(t *testing.T) {
 		transcriptVerifier := transcript.New([]byte("sameperm"))
 		msmAccumulator := msmaccumulator.New()
 
-		rs_a, err := rando.GetFrs(numBlinders)
+		rs_a, err := rando.GetFrs(common.N_BLINDERS)
 		require.NoError(t, err)
-		rs_m, err := rando.GetFrs(numBlinders)
+		rs_m, err := rando.GetFrs(common.N_BLINDERS)
 		require.NoError(t, err)
 
-		perm := make([]uint32, n-numBlinders)
+		perm := make([]uint32, n-common.N_BLINDERS)
 		for i := range perm {
 			perm[i] = uint32(i)
 		}
 		srand := mrand.New(mrand.NewSource(42))
 		srand.Shuffle(len(perm), func(i, j int) { perm[i], perm[j] = perm[j], perm[i] })
-		permFrs := make([]fr.Element, n-numBlinders)
+		permFrs := make([]fr.Element, n-common.N_BLINDERS)
 		for i := range perm {
 			permFrs[i] = fr.NewElement(uint64(perm[i]))
 		}
-		as, err := rando.GetFrs(n - numBlinders)
+		as, err := rando.GetFrs(n - common.N_BLINDERS)
 		require.NoError(t, err)
 		permAs := common.Permute(as, perm)
 
@@ -153,7 +152,7 @@ func TestSamePermutationArgument(t *testing.T) {
 			A,
 			M,
 			as,
-			numBlinders,
+			common.N_BLINDERS,
 			transcriptVerifier,
 			msmAccumulator,
 			rand,

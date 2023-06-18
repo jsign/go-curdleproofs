@@ -64,7 +64,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 	}
 
 	t.Run("Completeness", func(t *testing.T) {
-		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, common.N_BLINDERS)
+		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n)
 		ok, err := Verify(
 			proof,
 			crs,
@@ -86,7 +86,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 	})
 
 	t.Run("Soundness - Wrong result", func(t *testing.T) {
-		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, common.N_BLINDERS)
+		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n)
 		one := fr.One()
 		var resultPlusOne fr.Element
 		resultPlusOne.Add(&result, &one)
@@ -111,7 +111,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 	})
 
 	t.Run("Soundness - Wrong commitment to Bs", func(t *testing.T) {
-		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n, common.N_BLINDERS)
+		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n)
 		randScalar, err := rand.GetFr()
 		require.NoError(t, err)
 
@@ -139,16 +139,16 @@ func TestCompletenessAndSoundess(t *testing.T) {
 }
 
 // TOOD(jsign): replicat in other tests.
-func genVerifierParameters(t *testing.T, n int, numBlinders int) (CRS, bls12381.G1Affine, bls12381.G1Affine, bls12381.G1Jac, fr.Element, *transcript.Transcript, *msmaccumulator.MsmAccumulator) {
+func genVerifierParameters(t *testing.T, n int) (CRS, bls12381.G1Affine, bls12381.G1Affine, bls12381.G1Jac, fr.Element, *transcript.Transcript, *msmaccumulator.MsmAccumulator) {
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)
 
 	transcriptVerifier := transcript.New([]byte("gprod"))
 	msmAccumulator := msmaccumulator.New()
 
-	crsGs, err := rand.GetG1Affines(n - numBlinders)
+	crsGs, err := rand.GetG1Affines(n - common.N_BLINDERS)
 	require.NoError(t, err)
-	crsHs, err := rand.GetG1Affines(numBlinders)
+	crsHs, err := rand.GetG1Affines(common.N_BLINDERS)
 	require.NoError(t, err)
 	crsH, err := rand.GetG1Jac()
 	require.NoError(t, err)
@@ -165,9 +165,9 @@ func genVerifierParameters(t *testing.T, n int, numBlinders int) (CRS, bls12381.
 		Hs: crsHs,
 		H:  crsH,
 	}
-	bs, err := rand.GetFrs(n - numBlinders)
+	bs, err := rand.GetFrs(n - common.N_BLINDERS)
 	require.NoError(t, err)
-	r_bs, err := rand.GetFrs(numBlinders)
+	r_bs, err := rand.GetFrs(common.N_BLINDERS)
 	require.NoError(t, err)
 
 	result := fr.One()
