@@ -254,7 +254,7 @@ func Verify(
 	GplusH := make([]bls12381.G1Affine, len(crs.Gs)+1)
 	copy(GplusH, crs.Gs)
 	var HAffine bls12381.G1Affine
-	HAffine.FromJacobian(&crs.H) // TODO(jsign): let's avoid this.
+	HAffine.FromJacobian(&crs.H)
 	GplusH[len(crs.Gs)].Set(&HAffine)
 	for i := range s {
 		s[i].Mul(&s[i], &proof.c0)
@@ -350,7 +350,9 @@ func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([
 	last_z_term2.Mul(&last_z_term2, &inv_c)
 	last_z_term2.Mul(&last_z_term2, &cs[n-1])
 	last_z_term2.Add(&last_z_term2, &rs[n-1])
-	// TODO(jsign): maybe check tha last_z_term2 is not zero?
+	if last_z_term2.IsZero() {
+		return nil, nil, fmt.Errorf("last_z_term2 is zero")
+	}
 	last_z_term2.Inverse(&last_z_term2)
 	last_z.Mul(&last_z_term1, &last_z_term2)
 
