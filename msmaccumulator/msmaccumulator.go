@@ -20,7 +20,11 @@ func New() *MsmAccumulator {
 	}
 }
 
-func (ma *MsmAccumulator) AccumulateCheck(C bls12381.G1Jac, x []fr.Element, v []bls12381.G1Affine, rand *common.Rand) error {
+func (ma *MsmAccumulator) AccumulateCheck(
+	C bls12381.G1Jac,
+	x []fr.Element,
+	v []bls12381.G1Affine,
+	rand *common.Rand) error {
 	if len(v) != len(x) {
 		return fmt.Errorf("x and v must have the same length")
 	}
@@ -29,14 +33,14 @@ func (ma *MsmAccumulator) AccumulateCheck(C bls12381.G1Jac, x []fr.Element, v []
 	if err != nil {
 		return fmt.Errorf("get random scalar: %s", err)
 	}
+
+	var tmp fr.Element
 	for i := 0; i < len(v); i++ {
-		var tmp fr.Element
 		tmp.Mul(&alpha, &x[i])
 		scalar := ma.baseScalarMap[v[i]]
 		scalar.Add(&scalar, &tmp)
 		ma.baseScalarMap[v[i]] = scalar
 	}
-
 	ma.A_c.AddAssign(C.ScalarMultiplication(&C, common.FrToBigInt(&alpha)))
 
 	return nil
