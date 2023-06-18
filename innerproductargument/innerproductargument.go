@@ -11,6 +11,14 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
+var (
+	labelStep1 = []byte("ipa_step1")
+	labelAlpha = []byte("ipa_alpha")
+	labelBeta  = []byte("ipa_beta")
+	labelLoop  = []byte("ipa_loop")
+	labelGamma = []byte("ipa_gamma")
+)
+
 type CRS struct {
 	Gs       []bls12381.G1Affine
 	Gs_prime []bls12381.G1Affine
@@ -48,35 +56,34 @@ func Prove(
 	}
 
 	// Step 1.
-	r_c, r_d, err := generateIPABlinders(rand, cs, ds)
+	rs_c, rs_d, err := generateIPABlinders(rand, cs, ds)
 	if err != nil {
 		return Proof{}, fmt.Errorf("generate IPA blinders: %s", err)
 	}
 
 	var B_c bls12381.G1Jac
-	if _, err := B_c.MultiExp(crs.Gs, r_c, common.MultiExpConf); err != nil {
+	if _, err := B_c.MultiExp(crs.Gs, rs_c, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("multiexp B_c: %s", err)
 	}
 	var B_d bls12381.G1Jac
-	if _, err := B_d.MultiExp(crs.Gs_prime, r_d, common.MultiExpConf); err != nil {
+	if _, err := B_d.MultiExp(crs.Gs_prime, rs_d, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("multiexp B_d: %s", err)
 	}
 
-	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
-	transcript.AppendScalars([]byte("ipa_step1"), z)
-	transcript.AppendPoints([]byte("ipa_step1"), &B_c, &B_d)
+	transcript.AppendPoints(labelStep1, &C, &D)
+	transcript.AppendScalars(labelStep1, z)
+	transcript.AppendPoints(labelStep1, &B_c, &B_d)
 
-	// TODO(jsign): const-ize labels.
-	alpha := transcript.GetAndAppendChallenge([]byte("ipa_alpha"))
-	beta := transcript.GetAndAppendChallenge([]byte("ipa_beta"))
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
+	beta := transcript.GetAndAppendChallenge(labelBeta)
 
 	n := uint(len(cs))
 	for i := 0; i < int(n); i++ {
 		var tmp fr.Element
 		tmp.Mul(&alpha, &cs[i])
-		cs[i].Add(&r_c[i], &tmp)
+		cs[i].Add(&rs_c[i], &tmp)
 		tmp.Mul(&alpha, &ds[i])
-		ds[i].Add(&r_d[i], &tmp)
+		ds[i].Add(&rs_d[i], &tmp)
 	}
 
 	var H bls12381.G1Jac
@@ -136,8 +143,8 @@ func Prove(
 		R_Cs = append(R_Cs, R_C)
 		R_Ds = append(R_Ds, R_D)
 
-		transcript.AppendPoints([]byte("ipa_loop"), &L_C, &L_D, &R_C, &R_D)
-		gamma := transcript.GetAndAppendChallenge([]byte("ipa_gamma"))
+		transcript.AppendPoints(labelLoop, &L_C, &L_D, &R_C, &R_D)
+		gamma := transcript.GetAndAppendChallenge(labelGamma)
 		if gamma.IsZero() {
 			return Proof{}, fmt.Errorf("ipa gamma challenge is zero")
 		}
@@ -189,11 +196,11 @@ func Verify(
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1.
-	transcript.AppendPoints([]byte("ipa_step1"), &C, &D)
-	transcript.AppendScalars([]byte("ipa_step1"), z)
-	transcript.AppendPoints([]byte("ipa_step1"), &proof.B_c, &proof.B_d)
-	alpha := transcript.GetAndAppendChallenge([]byte("ipa_alpha"))
-	beta := transcript.GetAndAppendChallenge([]byte("ipa_beta"))
+	transcript.AppendPoints(labelStep1, &C, &D)
+	transcript.AppendScalars(labelStep1, z)
+	transcript.AppendPoints(labelStep1, &proof.B_c, &proof.B_d)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
+	beta := transcript.GetAndAppendChallenge(labelBeta)
 
 	// Step 2.
 	n := len(crs.Gs)
@@ -204,8 +211,8 @@ func Verify(
 
 	gamma := make([]fr.Element, 0, m)
 	for i := 0; i < m; i++ {
-		transcript.AppendPoints([]byte("ipa_loop"), &proof.L_Cs[i], &proof.L_Ds[i], &proof.R_Cs[i], &proof.R_Ds[i])
-		gamma = append(gamma, transcript.GetAndAppendChallenge([]byte("ipa_gamma")))
+		transcript.AppendPoints(labelLoop, &proof.L_Cs[i], &proof.L_Ds[i], &proof.R_Cs[i], &proof.R_Ds[i])
+		gamma = append(gamma, transcript.GetAndAppendChallenge(labelGamma))
 	}
 	gamma_inv := fr.BatchInvert(gamma)
 
