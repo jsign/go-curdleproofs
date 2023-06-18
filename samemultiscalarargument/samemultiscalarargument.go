@@ -11,10 +11,17 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
+var (
+	labelStep1 = []byte("same_msm_step1")
+	labelAlpha = []byte("same_msm_alpha")
+	labelLoop  = []byte("same_msm_loop")
+	labelGamma = []byte("same_msm_gamma")
+)
+
 type Proof struct {
-	B_a *bls12381.G1Jac
-	B_t *bls12381.G1Jac
-	B_u *bls12381.G1Jac
+	B_a bls12381.G1Jac
+	B_t bls12381.G1Jac
+	B_u bls12381.G1Jac
 
 	L_A []bls12381.G1Jac
 	L_T []bls12381.G1Jac
@@ -33,48 +40,45 @@ func Prove(
 	Z_u bls12381.G1Jac,
 	T []bls12381.G1Affine,
 	U []bls12381.G1Affine,
-
 	x []fr.Element,
-
 	transcript *transcript.Transcript,
 	rand *common.Rand,
 ) (Proof, error) {
 	n := uint(len(x))
 	m := bits.Len(n) - 1
 
-	vec_L_T := make([]bls12381.G1Jac, 0, m)
-	vec_R_T := make([]bls12381.G1Jac, 0, m)
-	vec_L_U := make([]bls12381.G1Jac, 0, m)
-	vec_R_U := make([]bls12381.G1Jac, 0, m)
-	vec_L_A := make([]bls12381.G1Jac, 0, m)
-	vec_R_A := make([]bls12381.G1Jac, 0, m)
+	L_Ts := make([]bls12381.G1Jac, 0, m)
+	R_Ts := make([]bls12381.G1Jac, 0, m)
+	L_Us := make([]bls12381.G1Jac, 0, m)
+	R_Us := make([]bls12381.G1Jac, 0, m)
+	L_As := make([]bls12381.G1Jac, 0, m)
+	R_As := make([]bls12381.G1Jac, 0, m)
 
 	r, err := rand.GetFrs(int(n))
 	if err != nil {
 		return Proof{}, fmt.Errorf("generating blinders: %s", err)
 	}
 
-	B_a, err := (&bls12381.G1Jac{}).MultiExp(G, r, common.MultiExpConf)
-	if err != nil {
+	var B_a, B_t, B_u bls12381.G1Jac
+	if _, err := B_a.MultiExp(G, r, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("computing B_a: %s", err)
 	}
-	B_t, err := (&bls12381.G1Jac{}).MultiExp(T, r, common.MultiExpConf)
-	if err != nil {
+	if _, err := B_t.MultiExp(T, r, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("computing B_t: %s", err)
 	}
-	B_u, err := (&bls12381.G1Jac{}).MultiExp(U, r, common.MultiExpConf)
-	if err != nil {
+	if _, err := B_u.MultiExp(U, r, common.MultiExpConf); err != nil {
 		return Proof{}, fmt.Errorf("computing B_u: %s", err)
 	}
 
-	transcript.AppendPoints([]byte("same_msm_step1"), &A, &Z_t, &Z_u)
-	transcript.AppendPointsAffine([]byte("same_msm_step1"), T...)
-	transcript.AppendPointsAffine([]byte("same_msm_step1"), U...)
-	transcript.AppendPoints([]byte("same_msm_step1"), B_a, B_t, B_u)
-	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
+	transcript.AppendPoints(labelStep1, &A, &Z_t, &Z_u)
+	transcript.AppendPointsAffine(labelStep1, T...)
+	transcript.AppendPointsAffine(labelStep1, U...)
+	transcript.AppendPoints(labelStep1, &B_a, &B_t, &B_u)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
+	var tmp fr.Element
 	for i := range x {
-		x[i].Add(&r[i], (&fr.Element{}).Mul(&x[i], &alpha))
+		x[i].Add(&r[i], tmp.Mul(&x[i], &alpha))
 	}
 
 	for len(x) > 1 {
@@ -85,49 +89,45 @@ func Prove(
 		U_L, U_R := common.SplitAt(U, n)
 		G_L, G_R := common.SplitAt(G, n)
 
-		L_A, err := (&bls12381.G1Jac{}).MultiExp(G_R, x_L, common.MultiExpConf)
-		if err != nil {
+		var L_A, L_T, L_U, R_A, R_T, R_U bls12381.G1Jac
+		if _, err := L_A.MultiExp(G_R, x_L, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("computing L_A: %s", err)
 		}
-		L_T, err := (&bls12381.G1Jac{}).MultiExp(T_R, x_L, common.MultiExpConf)
-		if err != nil {
+		if _, err := L_T.MultiExp(T_R, x_L, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("computing L_T: %s", err)
 		}
-		L_U, err := (&bls12381.G1Jac{}).MultiExp(U_R, x_L, common.MultiExpConf)
-		if err != nil {
+		if _, err := L_U.MultiExp(U_R, x_L, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("computing L_U: %s", err)
 		}
-		R_A, err := (&bls12381.G1Jac{}).MultiExp(G_L, x_R, common.MultiExpConf)
-		if err != nil {
+		if _, err := R_A.MultiExp(G_L, x_R, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("computing R_A: %s", err)
 		}
-		R_T, err := (&bls12381.G1Jac{}).MultiExp(T_L, x_R, common.MultiExpConf)
-		if err != nil {
+		if _, err := R_T.MultiExp(T_L, x_R, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("computing R_T: %s", err)
 		}
-		R_U, err := (&bls12381.G1Jac{}).MultiExp(U_L, x_R, common.MultiExpConf)
-		if err != nil {
+		if _, err := R_U.MultiExp(U_L, x_R, common.MultiExpConf); err != nil {
 			return Proof{}, fmt.Errorf("computing R_U: %s", err)
 		}
 
-		vec_L_A = append(vec_L_A, *L_A)
-		vec_L_T = append(vec_L_T, *L_T)
-		vec_L_U = append(vec_L_U, *L_U)
-		vec_R_A = append(vec_R_A, *R_A)
-		vec_R_T = append(vec_R_T, *R_T)
-		vec_R_U = append(vec_R_U, *R_U)
+		L_As = append(L_As, L_A)
+		L_Ts = append(L_Ts, L_T)
+		L_Us = append(L_Us, L_U)
+		R_As = append(R_As, R_A)
+		R_Ts = append(R_Ts, R_T)
+		R_Us = append(R_Us, R_U)
 
-		transcript.AppendPoints([]byte("same_msm_loop"), L_A, L_T, L_U, R_A, R_T, R_U)
-		gamma := transcript.GetAndAppendChallenge([]byte("same_msm_gamma"))
-		gamma_inv := (&fr.Element{}).Inverse(&gamma)
-		if gamma_inv.Equal(&gamma) {
-			return Proof{}, fmt.Errorf("gamma is not invertible")
+		transcript.AppendPoints(labelLoop, &L_A, &L_T, &L_U, &R_A, &R_T, &R_U)
+		gamma := transcript.GetAndAppendChallenge(labelGamma)
+		if gamma.IsZero() {
+			return Proof{}, fmt.Errorf("gamma is zero")
 		}
+		var gamma_inv fr.Element
+		gamma_inv.Inverse(&gamma)
 
 		// Fold vectors and basis
 		for i := 0; i < int(n); i++ {
 			gammaBigInt := common.FrToBigInt(&gamma)
-			x_L[i].Add(&x_L[i], (&fr.Element{}).Mul(gamma_inv, &x_R[i]))
+			x_L[i].Add(&x_L[i], (&fr.Element{}).Mul(&gamma_inv, &x_R[i]))
 			T_L[i].Add(&T_L[i], (&bls12381.G1Affine{}).ScalarMultiplication(&T_R[i], gammaBigInt))
 			U_L[i].Add(&U_L[i], (&bls12381.G1Affine{}).ScalarMultiplication(&U_R[i], gammaBigInt))
 			G_L[i].Add(&G_L[i], (&bls12381.G1Affine{}).ScalarMultiplication(&G_R[i], gammaBigInt))
@@ -137,17 +137,20 @@ func Prove(
 		U = U_L
 		G = G_L
 	}
+	if len(x) != 1 {
+		return Proof{}, fmt.Errorf("unexpected length of x")
+	}
 
 	return Proof{
 		B_a: B_a,
 		B_t: B_t,
 		B_u: B_u,
-		L_A: vec_L_A,
-		L_T: vec_L_T,
-		L_U: vec_L_U,
-		R_A: vec_R_A,
-		R_T: vec_R_T,
-		R_U: vec_R_U,
+		L_A: L_As,
+		L_T: L_Ts,
+		L_U: L_Us,
+		R_A: R_As,
+		R_T: R_Ts,
+		R_U: R_Us,
 		x:   x[0],
 	}, nil
 }
@@ -166,11 +169,11 @@ func Verify(
 ) (bool, error) {
 	n := len(T)
 
-	transcript.AppendPoints([]byte("same_msm_step1"), &A, &Z_t, &Z_u)
-	transcript.AppendPointsAffine([]byte("same_msm_step1"), T...)
-	transcript.AppendPointsAffine([]byte("same_msm_step1"), U...)
-	transcript.AppendPoints([]byte("same_msm_step1"), proof.B_a, proof.B_t, proof.B_u)
-	alpha := transcript.GetAndAppendChallenge([]byte("same_msm_alpha"))
+	transcript.AppendPoints(labelStep1, &A, &Z_t, &Z_u)
+	transcript.AppendPointsAffine(labelStep1, T...)
+	transcript.AppendPointsAffine(labelStep1, U...)
+	transcript.AppendPoints(labelStep1, &proof.B_a, &proof.B_t, &proof.B_u)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
 	gamma, gamma_inv, s, err := unfoldedScalars(&proof, n, transcript)
 	if err != nil {
@@ -183,12 +186,9 @@ func Verify(
 	}
 
 	var A_a, Z_t_a, Z_u_a bls12381.G1Jac
-	A_a.Set(proof.B_a)
-	A_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&A, common.FrToBigInt(&alpha)))
-	Z_t_a.Set(proof.B_t)
-	Z_t_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&Z_t, common.FrToBigInt(&alpha)))
-	Z_u_a.Set(proof.B_u)
-	Z_u_a.AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&Z_u, common.FrToBigInt(&alpha)))
+	A_a.Set(&proof.B_a).AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&A, common.FrToBigInt(&alpha)))
+	Z_t_a.Set(&proof.B_t).AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&Z_t, common.FrToBigInt(&alpha)))
+	Z_u_a.Set(&proof.B_u).AddAssign((&bls12381.G1Jac{}).ScalarMultiplication(&Z_u, common.FrToBigInt(&alpha)))
 
 	var l, p, r bls12381.G1Jac
 	L_A_Affine := bls12381.BatchJacobianToAffineG1(proof.L_A)
@@ -252,7 +252,7 @@ func unfoldedScalars(
 	challenges := make([]fr.Element, 0, lg_n)
 	for i := range proof.L_A {
 		transcript.AppendPoints(
-			[]byte("same_msm_loop"),
+			labelLoop,
 			&proof.L_A[i],
 			&proof.L_T[i],
 			&proof.L_U[i],
@@ -260,10 +260,10 @@ func unfoldedScalars(
 			&proof.R_T[i],
 			&proof.R_U[i],
 		)
-		challenges = append(challenges, transcript.GetAndAppendChallenge([]byte("same_msm_gamma")))
+		challenges = append(challenges, transcript.GetAndAppendChallenge(labelGamma))
 	}
 
-	vec_s := make([]fr.Element, 0, n)
+	ss := make([]fr.Element, 0, n)
 	for i := 0; i < n; i++ {
 		tmp := fr.One()
 		for k := lg_n - 1; k >= 0; k-- {
@@ -272,8 +272,8 @@ func unfoldedScalars(
 				tmp.Mul(&tmp, &challenges[k])
 			}
 		}
-		vec_s = append(vec_s, tmp)
+		ss = append(ss, tmp)
 	}
 
-	return challenges, fr.BatchInvert(challenges), vec_s, nil
+	return challenges, fr.BatchInvert(challenges), ss, nil
 }
