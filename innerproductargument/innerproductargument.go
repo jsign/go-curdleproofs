@@ -170,7 +170,9 @@ func Prove(
 		crs.Gs_prime = G_prime_L
 	}
 
-	// TODO(jsign): sanity check that we end up with correct lengths (i.e: 1)
+	if len(cs) != 1 || len(ds) != 1 || len(crs.Gs) != 1 || len(crs.Gs_prime) != 1 {
+		return Proof{}, fmt.Errorf("ipa final lengths are not 1")
+	}
 
 	return Proof{
 		B_c:  B_c,
