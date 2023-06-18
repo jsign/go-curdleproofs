@@ -30,112 +30,22 @@ type Proof struct {
 	d0 fr.Element
 }
 
-func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([]fr.Element, []fr.Element, error) {
-	n := len(cs)
-
-	// Generate all the blinders but leave out two blinders from z
-	rs, err := rand.GetFrs(n)
-	if err != nil {
-		return nil, nil, fmt.Errorf("generate rs: %s", err)
-	}
-	zs, err := rand.GetFrs(n - 2)
-	if err != nil {
-		return nil, nil, fmt.Errorf("generate zs: %s", err)
-	}
-
-	// We have to solve a system of two linear equations over the two unknowns: z_{n-1} and z_n (the two blinders we left out)
-	// Consider first equation: <r, d> + <z, c> == 0
-	// <=> r_1 * d_1 + ... + r_n * d_n + z_1 * c_1 + ... + z_{n-1} * c_{n-1} + z_n * c_n == 0
-	// The last two products contain the unknowns whereas all the previous is a known quantity `omega` -- let's compute it below
-	omegaL, err := common.IPA(rs, ds)
-	if err != nil {
-		return nil, nil, fmt.Errorf("compute omegaL: %s", err)
-	}
-
-	omegaR, err := common.IPA(zs[:n-2], cs[:n-2])
-	if err != nil {
-		return nil, nil, fmt.Errorf("compute omegaR: %s", err)
-	}
-	var omega fr.Element
-	omega.Add(&omegaL, &omegaR)
-	// Now let's consider the second equation: <r, z> == 0
-	// <=> r_1 * z_1 + ... r_{n-1} * z_{n-1} * r_n * z_n == 0
-	// Again, the last two products contain the unknowns whereas all the previous is a known quantity `delta` -- let's compute it below
-	delta, err := common.IPA(rs[:n-2], zs[:n-2])
-	if err != nil {
-		return nil, nil, fmt.Errorf("compute delta: %s", err)
-	}
-
-	// Solving the first equation for z_{n-1} we get:
-	//
-	//   z_{n-1} = - c_{n-1}^-1 (z_n * c_n + omega)
-	//
-	// then plugging the above z_{n-1} into the second equation, we get:
-	//
-	//   z_n = (r_{n-1} * c_{n-1}^-1 * omega - delta) / (- r_{n-1} * c_{n-1}^-1 * c_n + r_{n-1})
-	//
-	// We compute these values below:
-
-	var inv_c fr.Element
-	inv_c.Inverse(&cs[n-2])
-
-	var last_z, last_z_term1, last_z_term2 fr.Element
-	last_z_term1.Mul(&rs[n-2], &inv_c)
-	last_z_term1.Mul(&last_z_term1, &omega)
-	last_z_term1.Sub(&last_z_term1, &delta)
-	last_z_term2.Neg(&rs[n-2])
-	last_z_term2.Mul(&last_z_term2, &inv_c)
-	last_z_term2.Mul(&last_z_term2, &cs[n-1])
-	last_z_term2.Add(&last_z_term2, &rs[n-1])
-	// TODO(jsign): maybe check tha last_z_term2 is not zero?
-	last_z_term2.Inverse(&last_z_term2)
-	last_z.Mul(&last_z_term1, &last_z_term2)
-
-	var penultimate_z, penultimate_z_term1, penultimate_z_term2 fr.Element
-	penultimate_z_term1.Neg(&inv_c)
-	penultimate_z_term2.Mul(&last_z, &cs[n-1])
-	penultimate_z_term2.Add(&penultimate_z_term2, &omega)
-	penultimate_z.Mul(&penultimate_z_term1, &penultimate_z_term2)
-
-	zs = append(zs, penultimate_z, last_z)
-
-	// Make sure the constraints were satisfied
-	checkTerm1, err := common.IPA(rs, ds)
-	if err != nil {
-		return nil, nil, fmt.Errorf("compute checkTerm1: %s", err)
-	}
-	checkTerm2, err := common.IPA(zs, cs)
-	if err != nil {
-		return nil, nil, fmt.Errorf("compute checkTerm2: %s", err)
-	}
-	if !checkTerm1.Add(&checkTerm1, &checkTerm2).IsZero() {
-		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
-	}
-	check, err := common.IPA(rs, zs)
-	if err != nil {
-		return nil, nil, fmt.Errorf("compute check: %s", err)
-	}
-	if !check.IsZero() {
-		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
-	}
-
-	return rs, zs, nil
-}
-
 func Prove(
 	crs CRS,
-
 	C bls12381.G1Jac,
 	D bls12381.G1Jac,
 	z fr.Element,
-
 	cs []fr.Element,
 	ds []fr.Element,
-
 	transcript *transcript.Transcript,
 	rand *common.Rand,
 ) (Proof, error) {
-	// TODO(jsign): sanity checks that cs and ds are the same length and a power of two.
+	if len(cs) != len(ds) {
+		return Proof{}, fmt.Errorf("cs and ds are not the same length")
+	}
+	if len(cs)&(len(cs)-1) != 0 {
+		return Proof{}, fmt.Errorf("cs and ds are not a power of two")
+	}
 
 	// Step 1.
 	r_c, r_d, err := generateIPABlinders(rand, cs, ds)
@@ -374,4 +284,96 @@ func Verify(
 	}
 
 	return true, nil
+}
+
+func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([]fr.Element, []fr.Element, error) {
+	n := len(cs)
+
+	// Generate all the blinders but leave out two blinders from z
+	rs, err := rand.GetFrs(n)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate rs: %s", err)
+	}
+	zs, err := rand.GetFrs(n - 2)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate zs: %s", err)
+	}
+
+	// We have to solve a system of two linear equations over the two unknowns: z_{n-1} and z_n (the two blinders we left out)
+	// Consider first equation: <r, d> + <z, c> == 0
+	// <=> r_1 * d_1 + ... + r_n * d_n + z_1 * c_1 + ... + z_{n-1} * c_{n-1} + z_n * c_n == 0
+	// The last two products contain the unknowns whereas all the previous is a known quantity `omega` -- let's compute it below
+	omegaL, err := common.IPA(rs, ds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute omegaL: %s", err)
+	}
+
+	omegaR, err := common.IPA(zs[:n-2], cs[:n-2])
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute omegaR: %s", err)
+	}
+	var omega fr.Element
+	omega.Add(&omegaL, &omegaR)
+	// Now let's consider the second equation: <r, z> == 0
+	// <=> r_1 * z_1 + ... r_{n-1} * z_{n-1} * r_n * z_n == 0
+	// Again, the last two products contain the unknowns whereas all the previous is a known quantity `delta` -- let's compute it below
+	delta, err := common.IPA(rs[:n-2], zs[:n-2])
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute delta: %s", err)
+	}
+
+	// Solving the first equation for z_{n-1} we get:
+	//
+	//   z_{n-1} = - c_{n-1}^-1 (z_n * c_n + omega)
+	//
+	// then plugging the above z_{n-1} into the second equation, we get:
+	//
+	//   z_n = (r_{n-1} * c_{n-1}^-1 * omega - delta) / (- r_{n-1} * c_{n-1}^-1 * c_n + r_{n-1})
+	//
+	// We compute these values below:
+
+	var inv_c fr.Element
+	inv_c.Inverse(&cs[n-2])
+
+	var last_z, last_z_term1, last_z_term2 fr.Element
+	last_z_term1.Mul(&rs[n-2], &inv_c)
+	last_z_term1.Mul(&last_z_term1, &omega)
+	last_z_term1.Sub(&last_z_term1, &delta)
+	last_z_term2.Neg(&rs[n-2])
+	last_z_term2.Mul(&last_z_term2, &inv_c)
+	last_z_term2.Mul(&last_z_term2, &cs[n-1])
+	last_z_term2.Add(&last_z_term2, &rs[n-1])
+	// TODO(jsign): maybe check tha last_z_term2 is not zero?
+	last_z_term2.Inverse(&last_z_term2)
+	last_z.Mul(&last_z_term1, &last_z_term2)
+
+	var penultimate_z, penultimate_z_term1, penultimate_z_term2 fr.Element
+	penultimate_z_term1.Neg(&inv_c)
+	penultimate_z_term2.Mul(&last_z, &cs[n-1])
+	penultimate_z_term2.Add(&penultimate_z_term2, &omega)
+	penultimate_z.Mul(&penultimate_z_term1, &penultimate_z_term2)
+
+	zs = append(zs, penultimate_z, last_z)
+
+	// Make sure the constraints were satisfied
+	checkTerm1, err := common.IPA(rs, ds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute checkTerm1: %s", err)
+	}
+	checkTerm2, err := common.IPA(zs, cs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute checkTerm2: %s", err)
+	}
+	if !checkTerm1.Add(&checkTerm1, &checkTerm2).IsZero() {
+		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
+	}
+	check, err := common.IPA(rs, zs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("compute check: %s", err)
+	}
+	if !check.IsZero() {
+		return nil, nil, fmt.Errorf("failed to generate IPA blinders: constraints not satisfied")
+	}
+
+	return rs, zs, nil
 }
