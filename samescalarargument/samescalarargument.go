@@ -11,6 +11,11 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
+var (
+	labelPoints = []byte("sameexp_points")
+	labelAlpha  = []byte("sameexp_alpha")
+)
+
 type CRS struct {
 	Gt bls12381.G1Jac
 	Gu bls12381.G1Jac
@@ -56,15 +61,9 @@ func Prove(
 	A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, &bi_r_k), r_a)
 	B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, &bi_r_k), r_b)
 
-	transcript.AppendPoints([]byte("sameexp_points"),
-		&R, &S,
-		&T.T_1, &T.T_2,
-		&U.T_1, &U.T_2,
-		&A.T_1, &A.T_2,
-		&B.T_1, &B.T_2,
-	)
+	transcript.AppendPoints(labelPoints, &R, &S, &T.T_1, &T.T_2, &U.T_1, &U.T_2, &A.T_1, &A.T_2, &B.T_1, &B.T_2)
 
-	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
 	var z_k, z_t, z_u fr.Element
 	z_k.Add(&r_k, z_k.Mul(&k, &alpha))
@@ -89,15 +88,8 @@ func Verify(
 	U groupcommitment.GroupCommitment,
 	transcript *transcript.Transcript,
 ) bool {
-	transcript.AppendPoints(
-		[]byte("sameexp_points"),
-		&R, &S,
-		&T.T_1, &T.T_2,
-		&U.T_1, &U.T_2,
-		&proof.A.T_1, &proof.A.T_2,
-		&proof.B.T_1, &proof.B.T_2,
-	)
-	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
+	transcript.AppendPoints(labelPoints, &R, &S, &T.T_1, &T.T_2, &U.T_1, &U.T_2, &proof.A.T_1, &proof.A.T_2, &proof.B.T_1, &proof.B.T_2)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
 	var tmp bls12381.G1Jac
 	expected_1 := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, common.FrToBigInt(&proof.Z_k)), proof.Z_t)
