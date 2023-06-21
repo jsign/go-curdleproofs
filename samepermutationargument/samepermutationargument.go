@@ -11,6 +11,12 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
+var (
+	labelStep1 = []byte("same_perm_step1")
+	labelAlpha = []byte("same_perm_alpha")
+	labelBeta  = []byte("same_perm_beta")
+)
+
 type CRS struct {
 	Gs []bls12381.G1Affine
 	Hs []bls12381.G1Affine
@@ -34,10 +40,10 @@ func Prove(
 	rand *common.Rand,
 ) (Proof, error) {
 	// Step 1
-	transcript.AppendPoints([]byte("same_perm_step1"), &A, &M)
-	transcript.AppendScalars([]byte("same_perm_step1"), as...)
-	alpha := transcript.GetAndAppendChallenge([]byte("same_perm_alpha"))
-	beta := transcript.GetAndAppendChallenge([]byte("same_perm_beta"))
+	transcript.AppendPoints(labelStep1, &A, &M)
+	transcript.AppendScalars(labelStep1, as...)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
+	beta := transcript.GetAndAppendChallenge(labelBeta)
 
 	// Step 2
 	permutedAs := common.Permute(as, permutation)
@@ -109,10 +115,10 @@ func Verify(
 ) (bool, error) {
 	// Step 1
 	// TODO(jsign): double check FS since doesn't seem to match paper.
-	transcript.AppendPoints([]byte("same_perm_step1"), &A, &M)
-	transcript.AppendScalars([]byte("same_perm_step1"), as...)
-	alpha := transcript.GetAndAppendChallenge([]byte("same_perm_alpha"))
-	beta := transcript.GetAndAppendChallenge([]byte("same_perm_beta"))
+	transcript.AppendPoints(labelStep1, &A, &M)
+	transcript.AppendScalars(labelStep1, as...)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
+	beta := transcript.GetAndAppendChallenge(labelBeta)
 
 	// Step 2
 	p := fr.One()
