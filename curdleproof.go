@@ -49,7 +49,7 @@ func Prove(
 	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ss...)
 	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ts...)
 	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Us...)
-	transcript.AppendPoints([]byte("curdleproofs_step1"), &M)
+	transcript.AppendPoints([]byte("curdleproofs_step1"), M)
 	as := transcript.GetAndAppendChallenges([]byte("curdleproofs_vec_a"), len(Rs))
 
 	// Step 2
@@ -214,7 +214,7 @@ func Verify(
 	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ss...)
 	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ts...)
 	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Us...)
-	transcript.AppendPoints([]byte("curdleproofs_step1"), &M)
+	transcript.AppendPoints([]byte("curdleproofs_step1"), M)
 	as := transcript.GetAndAppendChallenges([]byte("curdleproofs_vec_a"), len(Rs))
 
 	// Step 2

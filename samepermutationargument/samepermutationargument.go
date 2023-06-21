@@ -40,7 +40,7 @@ func Prove(
 	rand *common.Rand,
 ) (Proof, error) {
 	// Step 1
-	transcript.AppendPoints(labelStep1, &A, &M)
+	transcript.AppendPoints(labelStep1, A, M)
 	transcript.AppendScalars(labelStep1, as...)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
@@ -115,7 +115,7 @@ func Verify(
 ) (bool, error) {
 	// Step 1
 	// TODO(jsign): double check FS since doesn't seem to match paper.
-	transcript.AppendPoints(labelStep1, &A, &M)
+	transcript.AppendPoints(labelStep1, A, M)
 	transcript.AppendScalars(labelStep1, as...)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)

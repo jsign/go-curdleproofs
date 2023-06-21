@@ -48,7 +48,7 @@ func Prove(
 	rand *common.Rand,
 ) (Proof, error) {
 	// Step 1.
-	transcript.AppendPoints(labelGprodStep1, &B)
+	transcript.AppendPoints(labelGprodStep1, B)
 	transcript.AppendScalars(labelGprodStep1, result)
 	alpha := transcript.GetAndAppendChallenge(labelGrpodAlpha)
 
@@ -80,7 +80,7 @@ func Prove(
 		return Proof{}, fmt.Errorf("compute r_p: %s", err)
 	}
 
-	transcript.AppendPoints(labelGprodStep2, &C)
+	transcript.AppendPoints(labelGprodStep2, C)
 	transcript.AppendScalars(labelGprodStep2, r_p)
 	beta := transcript.GetAndAppendChallenge(labelGprodBeta)
 	if beta.IsZero() {
@@ -215,12 +215,12 @@ func Verify(
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1
-	transcript.AppendPoints(labelGprodStep1, &B)
+	transcript.AppendPoints(labelGprodStep1, B)
 	transcript.AppendScalars(labelGprodStep1, result)
 	alpha := transcript.GetAndAppendChallenge(labelGrpodAlpha)
 
 	// Step 2
-	transcript.AppendPoints(labelGprodStep2, &proof.C)
+	transcript.AppendPoints(labelGprodStep2, proof.C)
 	transcript.AppendScalars(labelGprodStep2, proof.Rp)
 	beta := transcript.GetAndAppendChallenge(labelGprodBeta)
 	if beta.IsZero() {

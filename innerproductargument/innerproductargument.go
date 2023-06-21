@@ -70,9 +70,9 @@ func Prove(
 		return Proof{}, fmt.Errorf("multiexp B_d: %s", err)
 	}
 
-	transcript.AppendPoints(labelStep1, &C, &D)
+	transcript.AppendPoints(labelStep1, C, D)
 	transcript.AppendScalars(labelStep1, z)
-	transcript.AppendPoints(labelStep1, &B_c, &B_d)
+	transcript.AppendPoints(labelStep1, B_c, B_d)
 
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
@@ -143,7 +143,7 @@ func Prove(
 		R_Cs = append(R_Cs, R_C)
 		R_Ds = append(R_Ds, R_D)
 
-		transcript.AppendPoints(labelLoop, &L_C, &L_D, &R_C, &R_D)
+		transcript.AppendPoints(labelLoop, L_C, L_D, R_C, R_D)
 		gamma := transcript.GetAndAppendChallenge(labelGamma)
 		if gamma.IsZero() {
 			return Proof{}, fmt.Errorf("ipa gamma challenge is zero")
@@ -198,9 +198,9 @@ func Verify(
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1.
-	transcript.AppendPoints(labelStep1, &C, &D)
+	transcript.AppendPoints(labelStep1, C, D)
 	transcript.AppendScalars(labelStep1, z)
-	transcript.AppendPoints(labelStep1, &proof.B_c, &proof.B_d)
+	transcript.AppendPoints(labelStep1, proof.B_c, proof.B_d)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
 
@@ -213,7 +213,7 @@ func Verify(
 
 	gamma := make([]fr.Element, 0, m)
 	for i := 0; i < m; i++ {
-		transcript.AppendPoints(labelLoop, &proof.L_Cs[i], &proof.L_Ds[i], &proof.R_Cs[i], &proof.R_Ds[i])
+		transcript.AppendPoints(labelLoop, proof.L_Cs[i], proof.L_Ds[i], proof.R_Cs[i], proof.R_Ds[i])
 		gamma = append(gamma, transcript.GetAndAppendChallenge(labelGamma))
 	}
 	gamma_inv := fr.BatchInvert(gamma)

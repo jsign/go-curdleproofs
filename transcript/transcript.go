@@ -22,12 +22,8 @@ func (t *Transcript) appendMessage(label []byte, message []byte) {
 	t.inner.AppendMessage(label, message)
 }
 
-func (t *Transcript) AppendPoints(label []byte, points ...*bls12381.G1Jac) {
-	pointsValue := make([]bls12381.G1Jac, len(points))
-	for i, point := range points {
-		pointsValue[i] = *point
-	}
-	affs := bls12381.BatchJacobianToAffineG1(pointsValue)
+func (t *Transcript) AppendPoints(label []byte, points ...bls12381.G1Jac) {
+	affs := bls12381.BatchJacobianToAffineG1(points)
 	for _, point := range affs {
 		t.AppendPointsAffine(label, point)
 	}

@@ -61,7 +61,7 @@ func Prove(
 	A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, &bi_r_k), r_a)
 	B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, &bi_r_k), r_b)
 
-	transcript.AppendPoints(labelPoints, &R, &S, &T.T_1, &T.T_2, &U.T_1, &U.T_2, &A.T_1, &A.T_2, &B.T_1, &B.T_2)
+	transcript.AppendPoints(labelPoints, R, S, T.T_1, T.T_2, U.T_1, U.T_2, A.T_1, A.T_2, B.T_1, B.T_2)
 
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
@@ -88,7 +88,7 @@ func Verify(
 	U groupcommitment.GroupCommitment,
 	transcript *transcript.Transcript,
 ) bool {
-	transcript.AppendPoints(labelPoints, &R, &S, &T.T_1, &T.T_2, &U.T_1, &U.T_2, &proof.A.T_1, &proof.A.T_2, &proof.B.T_1, &proof.B.T_2)
+	transcript.AppendPoints(labelPoints, R, S, T.T_1, T.T_2, U.T_1, U.T_2, proof.A.T_1, proof.A.T_2, proof.B.T_1, proof.B.T_2)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
 	var tmp bls12381.G1Jac

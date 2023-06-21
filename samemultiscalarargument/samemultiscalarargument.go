@@ -70,10 +70,10 @@ func Prove(
 		return Proof{}, fmt.Errorf("computing B_u: %s", err)
 	}
 
-	transcript.AppendPoints(labelStep1, &A, &Z_t, &Z_u)
+	transcript.AppendPoints(labelStep1, A, Z_t, Z_u)
 	transcript.AppendPointsAffine(labelStep1, T...)
 	transcript.AppendPointsAffine(labelStep1, U...)
-	transcript.AppendPoints(labelStep1, &B_a, &B_t, &B_u)
+	transcript.AppendPoints(labelStep1, B_a, B_t, B_u)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
 	var tmp fr.Element
@@ -116,7 +116,7 @@ func Prove(
 		R_Ts = append(R_Ts, R_T)
 		R_Us = append(R_Us, R_U)
 
-		transcript.AppendPoints(labelLoop, &L_A, &L_T, &L_U, &R_A, &R_T, &R_U)
+		transcript.AppendPoints(labelLoop, L_A, L_T, L_U, R_A, R_T, R_U)
 		gamma := transcript.GetAndAppendChallenge(labelGamma)
 		if gamma.IsZero() {
 			return Proof{}, fmt.Errorf("gamma is zero")
@@ -169,10 +169,10 @@ func Verify(
 ) (bool, error) {
 	n := len(T)
 
-	transcript.AppendPoints(labelStep1, &A, &Z_t, &Z_u)
+	transcript.AppendPoints(labelStep1, A, Z_t, Z_u)
 	transcript.AppendPointsAffine(labelStep1, T...)
 	transcript.AppendPointsAffine(labelStep1, U...)
-	transcript.AppendPoints(labelStep1, &proof.B_a, &proof.B_t, &proof.B_u)
+	transcript.AppendPoints(labelStep1, proof.B_a, proof.B_t, proof.B_u)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
 	gamma, gamma_inv, s, err := unfoldedScalars(&proof, n, transcript)
@@ -253,12 +253,12 @@ func unfoldedScalars(
 	for i := range proof.L_A {
 		transcript.AppendPoints(
 			labelLoop,
-			&proof.L_A[i],
-			&proof.L_T[i],
-			&proof.L_U[i],
-			&proof.R_A[i],
-			&proof.R_T[i],
-			&proof.R_U[i],
+			proof.L_A[i],
+			proof.L_T[i],
+			proof.L_U[i],
+			proof.R_A[i],
+			proof.R_T[i],
+			proof.R_U[i],
 		)
 		challenges = append(challenges, transcript.GetAndAppendChallenge(labelGamma))
 	}
