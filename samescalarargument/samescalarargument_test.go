@@ -43,14 +43,14 @@ func TestProveVerify(t *testing.T) {
 	U := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, common.FrToBigInt(&k)), r_u)
 
 	proof, err := Prove(
-		&crs,
-		&R,
-		&S,
+		crs,
+		R,
+		S,
 		T,
 		U,
-		&k,
-		&r_t,
-		&r_u,
+		k,
+		r_t,
+		r_u,
 		transcriptProver,
 		rand,
 	)

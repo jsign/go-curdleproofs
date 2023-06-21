@@ -118,18 +118,18 @@ func Prove(
 
 	// TODO(jsign): enforce assumption in callees about mutation of parameters.
 	proofSameScalar, err := samescalarargument.Prove(
-		&samescalarargument.CRS{
+		samescalarargument.CRS{
 			Gt: crs.Gt,
 			Gu: crs.Gu,
 			H:  crs.H,
 		},
-		&R,
-		&S,
+		R,
+		S,
 		T,
 		U,
-		&k,
-		&r_t,
-		&r_u,
+		k,
+		r_t,
+		r_u,
 		transcript,
 		rand,
 	)

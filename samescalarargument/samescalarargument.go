@@ -26,14 +26,14 @@ type Proof struct {
 }
 
 func Prove(
-	crs *CRS,
-	R *bls12381.G1Jac,
-	S *bls12381.G1Jac,
+	crs CRS,
+	R bls12381.G1Jac,
+	S bls12381.G1Jac,
 	T groupcommitment.GroupCommitment,
 	U groupcommitment.GroupCommitment,
-	k *fr.Element,
-	r_t *fr.Element,
-	r_u *fr.Element,
+	k fr.Element,
+	r_t fr.Element,
+	r_u fr.Element,
 	transcript *transcript.Transcript,
 	rand *common.Rand,
 ) (Proof, error) {
@@ -53,11 +53,11 @@ func Prove(
 	r_k.BigInt(&bi_r_k)
 
 	var tmp bls12381.G1Jac
-	A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(R, &bi_r_k), r_a)
-	B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(S, &bi_r_k), r_b)
+	A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, &bi_r_k), r_a)
+	B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, &bi_r_k), r_b)
 
 	transcript.AppendPoints([]byte("sameexp_points"),
-		R, S,
+		&R, &S,
 		&T.T_1, &T.T_2,
 		&U.T_1, &U.T_2,
 		&A.T_1, &A.T_2,
@@ -66,16 +66,17 @@ func Prove(
 
 	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
 
-	z_k := (&fr.Element{}).Add(&r_k, (&fr.Element{}).Mul(k, &alpha))
-	z_t := (&fr.Element{}).Add(&r_a, (&fr.Element{}).Mul(r_t, &alpha))
-	z_u := (&fr.Element{}).Add(&r_b, (&fr.Element{}).Mul(r_u, &alpha))
+	var z_k, z_t, z_u fr.Element
+	z_k.Add(&r_k, z_k.Mul(&k, &alpha))
+	z_t.Add(&r_a, z_t.Mul(&r_t, &alpha))
+	z_u.Add(&r_b, z_u.Mul(&r_u, &alpha))
 
 	return Proof{
 		A:   A,
 		B:   B,
-		Z_k: *z_k,
-		Z_t: *z_t,
-		Z_u: *z_u,
+		Z_k: z_k,
+		Z_t: z_t,
+		Z_u: z_u,
 	}, nil
 }
 
