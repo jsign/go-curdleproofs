@@ -15,6 +15,10 @@ import (
 )
 
 var (
+	labelTranscript = []byte("curdleproofs")
+	labelStep1      = []byte("curdleproofs_step1")
+	labelVecA       = []byte("curdleproofs_vec_a")
+
 	zeroPoint = bls12381.G1Affine{}
 	zeroFr    = fr.Element{}
 )
@@ -42,15 +46,15 @@ func Prove(
 	rs_m []fr.Element,
 	rand *common.Rand,
 ) (Proof, error) {
-	transcript := transcript.New([]byte("curdleproofs"))
+	transcript := transcript.New(labelTranscript)
 
 	// Step 1
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Rs...)
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ss...)
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ts...)
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Us...)
-	transcript.AppendPoints([]byte("curdleproofs_step1"), M)
-	as := transcript.GetAndAppendChallenges([]byte("curdleproofs_vec_a"), len(Rs))
+	transcript.AppendPointsAffine(labelStep1, Rs...)
+	transcript.AppendPointsAffine(labelStep1, Ss...)
+	transcript.AppendPointsAffine(labelStep1, Ts...)
+	transcript.AppendPointsAffine(labelStep1, Us...)
+	transcript.AppendPoints(labelStep1, M)
+	as := transcript.GetAndAppendChallenges(labelVecA, len(Rs))
 
 	// Step 2
 	rs_a, err := rand.GetFrs(common.N_BLINDERS - 2)
@@ -201,7 +205,7 @@ func Verify(
 	M bls12381.G1Jac,
 	rand *common.Rand,
 ) (bool, error) {
-	transcript := transcript.New([]byte("curdleproofs"))
+	transcript := transcript.New(labelTranscript)
 	msmAccumulator := msmaccumulator.New()
 
 	// Make sure that randomizer was not the zero element (and wiped out the ciphertexts)
@@ -210,12 +214,12 @@ func Verify(
 	}
 
 	// Step 1
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Rs...)
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ss...)
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Ts...)
-	transcript.AppendPointsAffine([]byte("curdleproofs_step1"), Us...)
-	transcript.AppendPoints([]byte("curdleproofs_step1"), M)
-	as := transcript.GetAndAppendChallenges([]byte("curdleproofs_vec_a"), len(Rs))
+	transcript.AppendPointsAffine(labelStep1, Rs...)
+	transcript.AppendPointsAffine(labelStep1, Ss...)
+	transcript.AppendPointsAffine(labelStep1, Ts...)
+	transcript.AppendPointsAffine(labelStep1, Us...)
+	transcript.AppendPoints(labelStep1, M)
+	as := transcript.GetAndAppendChallenges(labelVecA, len(Rs))
 
 	// Step 2
 	ok, err := samepermutationargument.Verify(
