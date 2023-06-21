@@ -18,18 +18,22 @@ type CRS struct {
 }
 
 type Proof struct {
-	Cm_A groupcommitment.GroupCommitment
-	Cm_B groupcommitment.GroupCommitment
-	Z_k  fr.Element
-	Z_t  fr.Element
-	Z_u  fr.Element
+	A   groupcommitment.GroupCommitment
+	B   groupcommitment.GroupCommitment
+	Z_k fr.Element
+	Z_t fr.Element
+	Z_u fr.Element
 }
 
 func Prove(
 	crs *CRS,
-	R, S *bls12381.G1Jac,
-	cm_T, cm_U groupcommitment.GroupCommitment,
-	k, r_t, r_u *fr.Element,
+	R *bls12381.G1Jac,
+	S *bls12381.G1Jac,
+	T groupcommitment.GroupCommitment,
+	U groupcommitment.GroupCommitment,
+	k *fr.Element,
+	r_t *fr.Element,
+	r_u *fr.Element,
 	transcript *transcript.Transcript,
 	rand *common.Rand,
 ) (Proof, error) {
@@ -49,15 +53,15 @@ func Prove(
 	r_k.BigInt(&bi_r_k)
 
 	var tmp bls12381.G1Jac
-	cm_A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(R, &bi_r_k), r_a)
-	cm_B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(S, &bi_r_k), r_b)
+	A := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(R, &bi_r_k), r_a)
+	B := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(S, &bi_r_k), r_b)
 
 	transcript.AppendPoints([]byte("sameexp_points"),
 		R, S,
-		&cm_T.T_1, &cm_T.T_2,
-		&cm_U.T_1, &cm_U.T_2,
-		&cm_A.T_1, &cm_A.T_2,
-		&cm_B.T_1, &cm_B.T_2,
+		&T.T_1, &T.T_2,
+		&U.T_1, &U.T_2,
+		&A.T_1, &A.T_2,
+		&B.T_1, &B.T_2,
 	)
 
 	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
@@ -67,19 +71,21 @@ func Prove(
 	z_u := (&fr.Element{}).Add(&r_b, (&fr.Element{}).Mul(r_u, &alpha))
 
 	return Proof{
-		Cm_A: cm_A,
-		Cm_B: cm_B,
-		Z_k:  *z_k,
-		Z_t:  *z_t,
-		Z_u:  *z_u,
+		A:   A,
+		B:   B,
+		Z_k: *z_k,
+		Z_t: *z_t,
+		Z_u: *z_u,
 	}, nil
 }
 
 func Verify(
 	proof Proof,
 	crs CRS,
-	R, S bls12381.G1Jac,
-	T, U groupcommitment.GroupCommitment,
+	R bls12381.G1Jac,
+	S bls12381.G1Jac,
+	T groupcommitment.GroupCommitment,
+	U groupcommitment.GroupCommitment,
 	transcript *transcript.Transcript,
 ) bool {
 	transcript.AppendPoints(
@@ -87,8 +93,8 @@ func Verify(
 		&R, &S,
 		&T.T_1, &T.T_2,
 		&U.T_1, &U.T_2,
-		&proof.Cm_A.T_1, &proof.Cm_A.T_2,
-		&proof.Cm_B.T_1, &proof.Cm_B.T_2,
+		&proof.A.T_1, &proof.A.T_2,
+		&proof.B.T_1, &proof.B.T_2,
 	)
 	alpha := transcript.GetAndAppendChallenge([]byte("same_scalar_alpha"))
 
@@ -96,9 +102,5 @@ func Verify(
 	expected_1 := groupcommitment.New(crs.Gt, crs.H, *tmp.ScalarMultiplication(&R, common.FrToBigInt(&proof.Z_k)), proof.Z_t)
 	expected_2 := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, common.FrToBigInt(&proof.Z_k)), proof.Z_u)
 
-	if proof.Cm_A.Add(T.Mul(alpha)).Eq(&expected_1) &&
-		proof.Cm_B.Add(U.Mul(alpha)).Eq(&expected_2) {
-		return true
-	}
-	return false
+	return proof.A.Add(T.Mul(alpha)).Eq(&expected_1) && proof.B.Add(U.Mul(alpha)).Eq(&expected_2)
 }
