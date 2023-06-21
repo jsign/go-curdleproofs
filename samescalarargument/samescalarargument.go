@@ -11,6 +11,12 @@ import (
 	"github.com/jsign/curdleproofs/transcript"
 )
 
+type CRS struct {
+	Gt bls12381.G1Jac
+	Gu bls12381.G1Jac
+	H  bls12381.G1Jac
+}
+
 type Proof struct {
 	Cm_A groupcommitment.GroupCommitment
 	Cm_B groupcommitment.GroupCommitment
