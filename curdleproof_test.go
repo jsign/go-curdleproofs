@@ -1,11 +1,13 @@
 package curdleproof
 
 import (
+	"fmt"
 	"testing"
 
 	mrand "math/rand"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/stretchr/testify/require"
 )
@@ -15,33 +17,11 @@ func TestCompleteness(t *testing.T) {
 
 	n := 64
 
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
-
-	crs, err := GenerateCRS(n-common.N_BLINDERS, rand)
-	require.NoError(t, err)
-
-	perm := make([]uint32, n-common.N_BLINDERS)
-	for i := range perm {
-		perm[i] = uint32(i)
-	}
-	srand := mrand.New(mrand.NewSource(42))
-	srand.Shuffle(len(perm), func(i, j int) { perm[i], perm[j] = perm[j], perm[i] })
-
-	k, err := rand.GetFr()
-	require.NoError(t, err)
-
-	Rs, err := rand.GetG1Affines(n - common.N_BLINDERS)
-	require.NoError(t, err)
-	Ss, err := rand.GetG1Affines(n - common.N_BLINDERS)
-	require.NoError(t, err)
-
-	Ts, Us, M, rs_m, err := common.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, perm, k, rand)
-	require.NoError(t, err)
-
 	// Prove.
-	rand, err = common.NewRand(0)
+	rand, err := common.NewRand(42)
 	require.NoError(t, err)
+
+	crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(t, n)
 	proof, err := Prove(
 		crs,
 		Rs,
@@ -57,6 +37,8 @@ func TestCompleteness(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify.
+	rand, err = common.NewRand(43)
+	require.NoError(t, err)
 	ok, err := Verify(proof, crs, Rs, Ss, Ts, Us, M, rand)
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -182,4 +164,96 @@ func TestSoundness(t *testing.T) {
 		require.False(t, ok)
 
 	})
+}
+
+func BenchmarkProver(b *testing.B) {
+	rand, err := common.NewRand(42)
+	require.NoError(b, err)
+
+	for _, n := range []int{64, 128, 256} {
+		b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
+			crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, n)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _ = Prove(
+					crs,
+					Rs,
+					Ss,
+					Ts,
+					Us,
+					M,
+					perm,
+					k,
+					rs_m,
+					rand,
+				)
+			}
+		})
+	}
+}
+
+func BenchmarkVerifier(b *testing.B) {
+	rand, err := common.NewRand(42)
+	require.NoError(b, err)
+
+	for _, n := range []int{64, 128, 256} {
+		b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
+			crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, n)
+			proof, err := Prove(
+				crs,
+				Rs,
+				Ss,
+				Ts,
+				Us,
+				M,
+				perm,
+				k,
+				rs_m,
+				rand,
+			)
+			require.NoError(b, err)
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, _ = Verify(proof, crs, Rs, Ss, Ts, Us, M, rand)
+			}
+		})
+	}
+}
+
+func setup(t testing.TB, n int) (
+	CRS,
+	[]bls12381.G1Affine,
+	[]bls12381.G1Affine,
+	[]bls12381.G1Affine,
+	[]bls12381.G1Affine,
+	bls12381.G1Jac,
+	[]uint32,
+	fr.Element,
+	[]fr.Element) {
+	rand, err := common.NewRand(0)
+	require.NoError(t, err)
+
+	crs, err := GenerateCRS(n-common.N_BLINDERS, rand)
+	require.NoError(t, err)
+
+	perm := make([]uint32, n-common.N_BLINDERS)
+	for i := range perm {
+		perm[i] = uint32(i)
+	}
+	srand := mrand.New(mrand.NewSource(42))
+	srand.Shuffle(len(perm), func(i, j int) { perm[i], perm[j] = perm[j], perm[i] })
+
+	k, err := rand.GetFr()
+	require.NoError(t, err)
+
+	Rs, err := rand.GetG1Affines(n - common.N_BLINDERS)
+	require.NoError(t, err)
+	Ss, err := rand.GetG1Affines(n - common.N_BLINDERS)
+	require.NoError(t, err)
+
+	Ts, Us, M, rs_m, err := common.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, perm, k, rand)
+	require.NoError(t, err)
+
+	return crs, Rs, Ss, Ts, Us, M, perm, k, rs_m
 }
