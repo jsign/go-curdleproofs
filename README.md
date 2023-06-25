@@ -5,15 +5,27 @@ It's the backbone of [Whisk](https://ethresear.ch/t/whisk-a-practical-shuffle-ba
 
 ## Status
 
-This library is in feature parity with the Rust reference implementation. The Whisk interface is not implemented yet since it's still in flux, but it will be implemented soon.
+This library is in feature parity with the Rust reference implementation. The Whisk interface is not implemented yet since I'm waiting to be stabilized, but it will be implemented.
 
 This library is not yet audited, and should not be used in production. Here be dragons!
 
 ## Benchmarks
 
-Benchmarks for Curdleproofs and their internal arguments will be implemented soon.
+The following are benchmarks for 64, 128 and 256 elements (including blinders):
+```
+goos: linux
+goarch: amd64
+pkg: github.com/jsign/curdleproofs
+cpu: AMD Ryzen 7 3800XT 8-Core Processor            
+BenchmarkProver/shuffled_elements=60-16                       12          96241397 ns/op
+BenchmarkProver/shuffled_elements=124-16                       7         147237624 ns/op
+BenchmarkProver/shuffled_elements=252-16                       5         233925449 ns/op
+BenchmarkVerifier/shuffled_elements=60-16                    115          10346387 ns/op
+BenchmarkVerifier/shuffled_elements=124-16                   102          11821016 ns/op
+BenchmarkVerifier/shuffled_elements=252-16                    72          14792873 ns/op
+```
 
-Despite implementing all the performance optimizations mentioned in the paper, there might be other optimizations that can/will be done.
+The implementation has the optimizations mentioned in the paper and some extra minor ones. No extra effort was made to optimize further (i.e: there might be other trivial or advanced cryptography or engineering to apply).
 
 ## License
 
