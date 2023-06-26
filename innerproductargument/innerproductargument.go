@@ -2,6 +2,7 @@ package innerproductargument
 
 import (
 	"fmt"
+	"io"
 	"math/bits"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -387,4 +388,33 @@ func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([
 	}
 
 	return rs, zs, nil
+}
+
+func (p *Proof) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&p.B_c); err != nil {
+		return fmt.Errorf("decode B_c: %s", err)
+	}
+	if err := d.Decode(&p.B_d); err != nil {
+		return fmt.Errorf("decode B_d: %s", err)
+	}
+	if err := d.Decode(&p.L_Cs); err != nil {
+		return fmt.Errorf("decode L_Cs: %s", err)
+	}
+	if err := d.Decode(&p.R_Cs); err != nil {
+		return fmt.Errorf("decode R_Cs: %s", err)
+	}
+	if err := d.Decode(&p.L_Ds); err != nil {
+		return fmt.Errorf("decode L_Ds: %s", err)
+	}
+	if err := d.Decode(&p.R_Ds); err != nil {
+		return fmt.Errorf("decode R_Ds: %s", err)
+	}
+	if err := d.Decode(&p.c0); err != nil {
+		return fmt.Errorf("decode c0: %s", err)
+	}
+	if err := d.Decode(&p.d0); err != nil {
+		return fmt.Errorf("decode d0: %s", err)
+	}
+	return nil
 }
