@@ -93,3 +93,21 @@ func (r *Rand) GetG1Affines(n int) ([]bls12381.G1Affine, error) {
 	}
 	return ret, nil
 }
+
+func (r *Rand) GeneratePermutation(n int) ([]uint32, error) {
+	permutation := make([]uint32, n)
+	for i := range permutation {
+		permutation[i] = uint32(i)
+	}
+	var tmpBytes [16]byte
+	for i := range permutation {
+		if _, err := r.rand.Read(tmpBytes[:]); err != nil {
+			return nil, fmt.Errorf("get randomness: %s", err)
+		}
+		tmp := binary.BigEndian.Uint16(tmpBytes[:])
+		j := int(tmp) % (i + 1)
+		permutation[i], permutation[j] = permutation[j], permutation[i]
+	}
+
+	return permutation, nil
+}
