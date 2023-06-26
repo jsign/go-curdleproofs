@@ -2,6 +2,7 @@ package samemultiscalarargument
 
 import (
 	"fmt"
+	"io"
 	"math/bits"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -276,4 +277,39 @@ func unfoldedScalars(
 	}
 
 	return challenges, fr.BatchInvert(challenges), ss, nil
+}
+
+func (p *Proof) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&p.B_a); err != nil {
+		return fmt.Errorf("decoding B_a: %s", err)
+	}
+	if err := d.Decode(&p.B_t); err != nil {
+		return fmt.Errorf("decoding B_t: %s", err)
+	}
+	if err := d.Decode(&p.B_u); err != nil {
+		return fmt.Errorf("decoding B_u: %s", err)
+	}
+	if err := d.Decode(&p.L_A); err != nil {
+		return fmt.Errorf("decoding L_A: %s", err)
+	}
+	if err := d.Decode(&p.L_T); err != nil {
+		return fmt.Errorf("decoding L_T: %s", err)
+	}
+	if err := d.Decode(&p.L_U); err != nil {
+		return fmt.Errorf("decoding L_U: %s", err)
+	}
+	if err := d.Decode(&p.R_A); err != nil {
+		return fmt.Errorf("decoding R_A: %s", err)
+	}
+	if err := d.Decode(&p.R_T); err != nil {
+		return fmt.Errorf("decoding R_T: %s", err)
+	}
+	if err := d.Decode(&p.R_U); err != nil {
+		return fmt.Errorf("decoding R_U: %s", err)
+	}
+	if err := d.Decode(&p.x); err != nil {
+		return fmt.Errorf("decoding x: %s", err)
+	}
+	return nil
 }
