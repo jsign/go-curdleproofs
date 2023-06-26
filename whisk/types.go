@@ -2,12 +2,17 @@ package whisk
 
 import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/jsign/curdleproofs/common"
 )
 
 const (
 	WHISK_MAX_SHUFFLE_PROOF_SIZE = 1 << 15
 	WHISK_MAX_OPENING_PROOF_SIZE = 1 << 10
+	N                            = 128
+	ELL                          = N - common.N_BLINDERS
 )
+
+type WhiskShuffleProofBytes []byte
 
 type WhiskTracker struct {
 	rG   bls12381.G1Affine
