@@ -2,6 +2,7 @@ package grandproductargument
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -282,4 +283,18 @@ func Verify(
 	}
 
 	return ok, nil
+}
+
+func (p *Proof) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&p.C); err != nil {
+		return fmt.Errorf("decode C: %s", err)
+	}
+	if err := d.Decode(&p.Rp); err != nil {
+		return fmt.Errorf("decode Rp: %s", err)
+	}
+	if err := p.IPAProof.FromReader(r); err != nil {
+		return fmt.Errorf("decode IPAProof: %s", err)
+	}
+	return nil
 }

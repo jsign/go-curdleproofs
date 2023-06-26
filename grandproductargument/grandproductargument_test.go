@@ -135,7 +135,6 @@ func TestCompletenessAndSoundess(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, ok) // Note we expect this to be false.
 	})
-
 }
 
 // TOOD(jsign): replicat in other tests.
