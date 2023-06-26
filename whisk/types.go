@@ -1,23 +1,21 @@
 package whisk
 
-import bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+import (
+	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+)
 
 const (
 	WHISK_MAX_SHUFFLE_PROOF_SIZE = 1 << 15
 	WHISK_MAX_OPENING_PROOF_SIZE = 1 << 10
 )
 
-type WhiskShuffleProof struct {
-	bytes []byte
-}
-
-type WhiskTrackerProof struct {
-	bytes []byte
-}
-
 type WhiskTracker struct {
-	rG   bls12381.G1Jac
-	k_rG bls12381.G1Jac
+	rG   bls12381.G1Affine
+	k_rG bls12381.G1Affine
+}
+
+func (wt *WhiskTracker) getCoordinates() (bls12381.G1Affine, bls12381.G1Affine) {
+	return wt.rG, wt.k_rG
 }
 
 type CRS struct {
@@ -26,6 +24,6 @@ type CRS struct {
 	H    bls12381.G1Jac
 	Gt   bls12381.G1Jac
 	Gu   bls12381.G1Jac
-	Gsum bls12381.G1Jac
-	Hsum bls12381.G1Jac
+	Gsum bls12381.G1Affine
+	Hsum bls12381.G1Affine
 }
