@@ -1,6 +1,9 @@
 package groupcommitment
 
 import (
+	"fmt"
+	"io"
+
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
@@ -46,4 +49,15 @@ func (t *GroupCommitment) Mul(scalar fr.Element) GroupCommitment {
 
 func (t GroupCommitment) Eq(cm *GroupCommitment) bool {
 	return t.T_1.Equal(&cm.T_1) && t.T_2.Equal(&cm.T_2)
+}
+
+func (t *GroupCommitment) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&t.T_1); err != nil {
+		return fmt.Errorf("decoding T_1: %s", err)
+	}
+	if err := d.Decode(&t.T_2); err != nil {
+		return fmt.Errorf("decoding T_2: %s", err)
+	}
+	return nil
 }
