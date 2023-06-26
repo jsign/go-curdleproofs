@@ -2,6 +2,7 @@ package samepermutationargument
 
 import (
 	"fmt"
+	"io"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -160,4 +161,15 @@ func Verify(
 		return false, fmt.Errorf("failed to verify grand product argument: %s", err)
 	}
 	return ok, nil
+}
+
+func (p *Proof) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&p.B); err != nil {
+		return fmt.Errorf("failed to decode B: %s", err)
+	}
+	if err := p.gpaProof.FromReader(r); err != nil {
+		return fmt.Errorf("failed to decode GPA proof: %s", err)
+	}
+	return nil
 }
