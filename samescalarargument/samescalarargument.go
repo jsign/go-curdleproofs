@@ -2,6 +2,7 @@ package samescalarargument
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -96,4 +97,24 @@ func Verify(
 	expected_2 := groupcommitment.New(crs.Gu, crs.H, *tmp.ScalarMultiplication(&S, common.FrToBigInt(&proof.Z_k)), proof.Z_u)
 
 	return proof.A.Add(T.Mul(alpha)).Eq(&expected_1) && proof.B.Add(U.Mul(alpha)).Eq(&expected_2)
+}
+
+func (p *Proof) FromReader(r io.Reader) error {
+	if err := p.A.FromReader(r); err != nil {
+		return fmt.Errorf("read A: %s", err)
+	}
+	if err := p.B.FromReader(r); err != nil {
+		return fmt.Errorf("read B: %s", err)
+	}
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&p.Z_k); err != nil {
+		return fmt.Errorf("read Z_k: %s", err)
+	}
+	if err := d.Decode(&p.Z_t); err != nil {
+		return fmt.Errorf("read Z_t: %s", err)
+	}
+	if err := d.Decode(&p.Z_u); err != nil {
+		return fmt.Errorf("read Z_u: %s", err)
+	}
+	return nil
 }
