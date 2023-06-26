@@ -2,6 +2,7 @@ package curdleproof
 
 import (
 	"fmt"
+	"io"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -314,4 +315,34 @@ func Verify(
 		return false, fmt.Errorf("verifying msm accumulator: %s", err)
 	}
 	return ok, nil
+}
+
+func (p *Proof) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&p.A); err != nil {
+		return fmt.Errorf("decoding A: %s", err)
+	}
+	if err := p.T.FromReader(r); err != nil {
+		return fmt.Errorf("decoding T: %s", err)
+	}
+	if err := p.U.FromReader(r); err != nil {
+		return fmt.Errorf("decoding U: %s", err)
+	}
+	if err := d.Decode(&p.R); err != nil {
+		return fmt.Errorf("decoding R: %s", err)
+	}
+	if err := d.Decode(&p.S); err != nil {
+		return fmt.Errorf("decoding S: %s", err)
+	}
+	if err := p.proofSamePermutation.FromReader(r); err != nil {
+		return fmt.Errorf("decoding proofSamePermutation: %s", err)
+	}
+	if err := p.proofSameScalar.FromReader(r); err != nil {
+		return fmt.Errorf("decoding proofSameScalar: %s", err)
+	}
+	if err := p.proofSameMultiscalar.FromReader(r); err != nil {
+		return fmt.Errorf("decoding proofSameMultiscalar: %s", err)
+	}
+
+	return nil
 }
