@@ -173,3 +173,16 @@ func (p *Proof) FromReader(r io.Reader) error {
 	}
 	return nil
 }
+
+func (p *Proof) Serialize(w io.Writer) error {
+	e := bls12381.NewEncoder(w)
+	var bAffine bls12381.G1Affine
+	bAffine.FromJacobian(&p.B)
+	if err := e.Encode(bAffine); err != nil {
+		return fmt.Errorf("failed to encode B: %s", err)
+	}
+	if err := p.gpaProof.Serialize(w); err != nil {
+		return fmt.Errorf("failed to encode GPA proof: %s", err)
+	}
+	return nil
+}
