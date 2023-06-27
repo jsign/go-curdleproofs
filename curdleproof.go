@@ -346,3 +346,34 @@ func (p *Proof) FromReader(r io.Reader) error {
 
 	return nil
 }
+
+func (p *Proof) Serialize(w io.Writer) error {
+	e := bls12381.NewEncoder(w)
+	ars := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{p.A, p.R, p.S})
+	if err := e.Encode(ars[0]); err != nil {
+		panic(fmt.Errorf("encoding A: %s", err))
+	}
+	if err := p.T.Serialize(w); err != nil {
+		return fmt.Errorf("encoding T: %s", err)
+	}
+	if err := p.U.Serialize(w); err != nil {
+		return fmt.Errorf("encoding U: %s", err)
+	}
+	if err := e.Encode(ars[1]); err != nil {
+		return fmt.Errorf("encoding R: %s", err)
+	}
+	if err := e.Encode(ars[2]); err != nil {
+		return fmt.Errorf("encoding S: %s", err)
+	}
+	if err := p.proofSamePermutation.Serialize(w); err != nil {
+		return fmt.Errorf("encoding proofSamePermutation: %s", err)
+	}
+	if err := p.proofSameScalar.Serialize(w); err != nil {
+		return fmt.Errorf("encoding proofSameScalar: %s", err)
+	}
+	if err := p.proofSameMultiscalar.Serialize(w); err != nil {
+		return fmt.Errorf("encoding proofSameMultiscalar: %s", err)
+	}
+
+	return nil
+}
