@@ -298,3 +298,19 @@ func (p *Proof) FromReader(r io.Reader) error {
 	}
 	return nil
 }
+
+func (p *Proof) Serialize(w io.Writer) error {
+	var cAffine bls12381.G1Affine
+	cAffine.FromJacobian(&p.C)
+	e := bls12381.NewEncoder(w)
+	if err := e.Encode(cAffine); err != nil {
+		return fmt.Errorf("encode C: %s", err)
+	}
+	if err := e.Encode(&p.Rp); err != nil {
+		return fmt.Errorf("encode Rp: %s", err)
+	}
+	if err := p.IPAProof.Serialize(w); err != nil {
+		return fmt.Errorf("encode IPAProof: %s", err)
+	}
+	return nil
+}
