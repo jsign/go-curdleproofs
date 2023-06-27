@@ -118,3 +118,23 @@ func (p *Proof) FromReader(r io.Reader) error {
 	}
 	return nil
 }
+
+func (p *Proof) Serialize(w io.Writer) error {
+	if err := p.A.Serialize(w); err != nil {
+		return fmt.Errorf("write A: %s", err)
+	}
+	if err := p.B.Serialize(w); err != nil {
+		return fmt.Errorf("write B: %s", err)
+	}
+	e := bls12381.NewEncoder(w)
+	if err := e.Encode(p.Z_k); err != nil {
+		return fmt.Errorf("write Z_k: %s", err)
+	}
+	if err := e.Encode(p.Z_t); err != nil {
+		return fmt.Errorf("write Z_t: %s", err)
+	}
+	if err := e.Encode(p.Z_u); err != nil {
+		return fmt.Errorf("write Z_u: %s", err)
+	}
+	return nil
+}
