@@ -30,19 +30,19 @@ func New(
 	}
 }
 
-func (t *GroupCommitment) Add(cm GroupCommitment) GroupCommitment {
+func (gc *GroupCommitment) Add(cm GroupCommitment) GroupCommitment {
 	ret := GroupCommitment{}
-	ret.T_1.Set(&t.T_1).AddAssign(&cm.T_1)
-	ret.T_2.Set(&t.T_2).AddAssign(&cm.T_2)
+	ret.T_1.Set(&gc.T_1).AddAssign(&cm.T_1)
+	ret.T_2.Set(&gc.T_2).AddAssign(&cm.T_2)
 
 	return ret
 }
 
-func (t *GroupCommitment) Mul(scalar fr.Element) GroupCommitment {
+func (gc *GroupCommitment) Mul(scalar fr.Element) GroupCommitment {
 	bigIntScalar := common.FrToBigInt(&scalar)
 	ret := GroupCommitment{}
-	ret.T_1.ScalarMultiplication(&t.T_1, bigIntScalar)
-	ret.T_2.ScalarMultiplication(&t.T_2, bigIntScalar)
+	ret.T_1.ScalarMultiplication(&gc.T_1, bigIntScalar)
+	ret.T_2.ScalarMultiplication(&gc.T_2, bigIntScalar)
 
 	return ret
 }
@@ -51,13 +51,25 @@ func (t GroupCommitment) Eq(cm *GroupCommitment) bool {
 	return t.T_1.Equal(&cm.T_1) && t.T_2.Equal(&cm.T_2)
 }
 
-func (t *GroupCommitment) FromReader(r io.Reader) error {
+func (gc *GroupCommitment) FromReader(r io.Reader) error {
 	d := bls12381.NewDecoder(r)
-	if err := d.Decode(&t.T_1); err != nil {
+	if err := d.Decode(&gc.T_1); err != nil {
 		return fmt.Errorf("decoding T_1: %s", err)
 	}
-	if err := d.Decode(&t.T_2); err != nil {
+	if err := d.Decode(&gc.T_2); err != nil {
 		return fmt.Errorf("decoding T_2: %s", err)
+	}
+	return nil
+}
+
+func (gc *GroupCommitment) Serialize(w io.Writer) error {
+	ts := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{gc.T_1, gc.T_2})
+	e := bls12381.NewEncoder(w)
+	if err := e.Encode(ts[0]); err != nil {
+		return fmt.Errorf("encoding T_1: %s", err)
+	}
+	if err := e.Encode(ts[1]); err != nil {
+		return fmt.Errorf("encoding T_2: %s", err)
 	}
 	return nil
 }
