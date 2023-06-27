@@ -418,3 +418,38 @@ func (p *Proof) FromReader(r io.Reader) error {
 	}
 	return nil
 }
+
+func (p *Proof) Serialize(w io.Writer) error {
+	b_cd := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{p.B_c, p.B_d})
+	e := bls12381.NewEncoder(w)
+	if err := e.Encode(b_cd[0]); err != nil {
+		return fmt.Errorf("encode B_c: %s", err)
+	}
+	if err := e.Encode(b_cd[1]); err != nil {
+		return fmt.Errorf("encode B_d: %s", err)
+	}
+
+	affL_Cs := bls12381.BatchJacobianToAffineG1(p.L_Cs)
+	if err := e.Encode(affL_Cs); err != nil {
+		return fmt.Errorf("encode L_Cs: %s", err)
+	}
+	affR_Cs := bls12381.BatchJacobianToAffineG1(p.R_Cs)
+	if err := e.Encode(affR_Cs); err != nil {
+		return fmt.Errorf("encode R_Cs: %s", err)
+	}
+	affL_Ds := bls12381.BatchJacobianToAffineG1(p.L_Ds)
+	if err := e.Encode(affL_Ds); err != nil {
+		return fmt.Errorf("encode L_Ds: %s", err)
+	}
+	affR_Ds := bls12381.BatchJacobianToAffineG1(p.R_Ds)
+	if err := e.Encode(affR_Ds); err != nil {
+		return fmt.Errorf("encode R_Ds: %s", err)
+	}
+	if err := e.Encode(p.c0); err != nil {
+		return fmt.Errorf("encode c0: %s", err)
+	}
+	if err := e.Encode(p.d0); err != nil {
+		return fmt.Errorf("encode d0: %s", err)
+	}
+	return nil
+}
