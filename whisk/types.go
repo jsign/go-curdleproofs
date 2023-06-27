@@ -1,7 +1,11 @@
 package whisk
 
 import (
+	"bytes"
+	"fmt"
+
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	curdleproof "github.com/jsign/curdleproofs"
 	"github.com/jsign/curdleproofs/common"
 )
 
@@ -12,15 +16,32 @@ const (
 	ELL                          = N - common.N_BLINDERS
 )
 
-type WhiskShuffleProofBytes []byte
+type WhiskShuffleProof struct {
+	M     bls12381.G1Jac
+	Proof curdleproof.Proof
+}
+
+func (wsp *WhiskShuffleProof) Serialize() ([]byte, error) {
+	buf := bytes.NewBuffer(make([]byte, WHISK_MAX_SHUFFLE_PROOF_SIZE))
+	e := bls12381.NewEncoder(buf)
+
+	if err := e.Encode(wsp.M); err != nil {
+		return nil, fmt.Errorf("failed to encode M: %v", err)
+	}
+	if err := wsp.Proof.Serialize(buf); err != nil {
+		return nil, fmt.Errorf("failed to encode proof: %v", err)
+	}
+
+	return buf.Bytes(), nil
+}
 
 type WhiskTracker struct {
-	rG   bls12381.G1Affine
-	k_rG bls12381.G1Affine
+	R_G  bls12381.G1Affine
+	K_RG bls12381.G1Affine
 }
 
 func (wt *WhiskTracker) getCoordinates() (bls12381.G1Affine, bls12381.G1Affine) {
-	return wt.rG, wt.k_rG
+	return wt.R_G, wt.K_RG
 }
 
 type CRS struct {
