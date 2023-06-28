@@ -3,6 +3,7 @@ package whisk
 import (
 	"bytes"
 	"fmt"
+	"io"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	curdleproof "github.com/jsign/curdleproofs"
@@ -19,6 +20,17 @@ const (
 type WhiskShuffleProof struct {
 	M     bls12381.G1Jac
 	Proof curdleproof.Proof
+}
+
+func (wsp *WhiskShuffleProof) FromReader(r io.Reader) error {
+	d := bls12381.NewDecoder(r)
+	if err := d.Decode(&wsp.M); err != nil {
+		return fmt.Errorf("failed to decode M: %v", err)
+	}
+	if err := wsp.Proof.FromReader(r); err != nil {
+		return fmt.Errorf("failed to decode proof: %v", err)
+	}
+	return nil
 }
 
 func (wsp *WhiskShuffleProof) Serialize() ([]byte, error) {

@@ -13,17 +13,17 @@ func IsValidWhiskShuffleProof(
 	crs CRS,
 	preShuffleTrackers []WhiskTracker,
 	postShuffleTrackers []WhiskTracker,
-	m bls12381.G1Jac,
 	shuffleProofBytes []byte,
 	rand *common.Rand) (bool, error) {
 	if len(preShuffleTrackers) != len(postShuffleTrackers) {
 		return false, fmt.Errorf("pre and post shuffle trackers must be the same length")
 	}
 
-	var proof curdleproof.Proof
-	if err := proof.FromReader(bytes.NewReader(shuffleProofBytes)); err != nil {
-		return false, fmt.Errorf("failed to decode proof: %v", err)
+	var whiskProof WhiskShuffleProof
+	if err := whiskProof.FromReader(bytes.NewReader(shuffleProofBytes)); err != nil {
+		return false, fmt.Errorf("decoding proof: %s", err)
 	}
+
 	Rs := make([]bls12381.G1Affine, len(preShuffleTrackers))
 	Ss := make([]bls12381.G1Affine, len(preShuffleTrackers))
 	Ts := make([]bls12381.G1Affine, len(postShuffleTrackers))
@@ -34,7 +34,7 @@ func IsValidWhiskShuffleProof(
 	}
 
 	ok, err := curdleproof.Verify(
-		proof,
+		whiskProof.Proof,
 		curdleproof.CRS{
 			Gs:   crs.Gs,
 			Hs:   crs.Hs,
@@ -48,7 +48,7 @@ func IsValidWhiskShuffleProof(
 		Ss,
 		Ts,
 		Us,
-		m,
+		whiskProof.M,
 		rand,
 	)
 	if err != nil {
