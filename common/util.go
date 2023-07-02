@@ -86,3 +86,16 @@ func ShufflePermuteCommit(
 
 	return Ts, Us, M, rs_m, nil
 }
+
+func DecodeAffineSliceToJac(d *bls12381.Decoder, out *[]bls12381.G1Jac) error {
+	var affs []bls12381.G1Affine
+	if err := d.Decode(&affs); err != nil {
+		return err
+	}
+	*out = make([]bls12381.G1Jac, len(affs))
+	for i := range affs {
+		(*out)[i].FromAffine(&affs[i])
+	}
+
+	return nil
+}
