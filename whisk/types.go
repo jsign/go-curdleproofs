@@ -54,23 +54,27 @@ func (wsp *WhiskShuffleProof) Serialize() ([]byte, error) {
 }
 
 type WhiskTracker struct {
-	rg  G1PointBytes
-	krg G1PointBytes
+	rG  G1PointBytes
+	krG G1PointBytes
 }
 
-func NewWhiskTracker(R_G, K_RG bls12381.G1Affine) WhiskTracker {
+func NewWhiskTracker(rG, krG bls12381.G1Affine) WhiskTracker {
 	return WhiskTracker{
-		rg:  R_G.Bytes(),
-		krg: K_RG.Bytes(),
+		rG:  rG.Bytes(),
+		krG: krG.Bytes(),
 	}
 }
 
-func (wt *WhiskTracker) getPoints() (bls12381.G1Affine, bls12381.G1Affine) {
-	var R_G bls12381.G1Affine
-	var K_RG bls12381.G1Affine
-	R_G.Unmarshal(wt.rg[:])
-	K_RG.Unmarshal(wt.krg[:])
-	return R_G, K_RG
+func (wt *WhiskTracker) getPoints() (bls12381.G1Affine, bls12381.G1Affine, error) {
+	var rG bls12381.G1Affine
+	var krG bls12381.G1Affine
+	if err := rG.X.SetBytesCanonical(wt.rG[:]); err != nil {
+		return bls12381.G1Affine{}, bls12381.G1Affine{}, fmt.Errorf("failed to set R_G.X: %v", err)
+	}
+	if err := krG.X.SetBytesCanonical(wt.krG[:]); err != nil {
+		return bls12381.G1Affine{}, bls12381.G1Affine{}, fmt.Errorf("failed to set K_RG.X: %v", err)
+	}
+	return rG, krG, nil
 }
 
 type CRS struct {

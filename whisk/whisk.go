@@ -9,13 +9,8 @@ import (
 	"github.com/jsign/curdleproofs/common"
 )
 
-func IsValidWhiskShuffleProof(
-	crs CRS,
-	preShuffleTrackers []WhiskTracker,
-	postShuffleTrackers []WhiskTracker,
-	whiskShuffleProofBytes []byte,
-	rand *common.Rand) (bool, error) {
-	if len(preShuffleTrackers) != len(postShuffleTrackers) {
+func IsValidWhiskShuffleProof(crs CRS, preST, postST []WhiskTracker, whiskShuffleProofBytes []byte, rand *common.Rand) (bool, error) {
+	if len(preST) != len(postST) {
 		return false, fmt.Errorf("pre and post shuffle trackers must be the same length")
 	}
 
@@ -24,18 +19,20 @@ func IsValidWhiskShuffleProof(
 		return false, fmt.Errorf("decoding proof: %s", err)
 	}
 
-	Rs := make([]bls12381.G1Affine, len(preShuffleTrackers))
-	Ss := make([]bls12381.G1Affine, len(preShuffleTrackers))
-	Ts := make([]bls12381.G1Affine, len(postShuffleTrackers))
-	Us := make([]bls12381.G1Affine, len(postShuffleTrackers))
-	for i := 0; i < len(preShuffleTrackers); i++ {
-		d := bls12381.NewDecoder(bytes.NewReader(preShuffleTrackers[i].rg[:]))
-		if err := d.Decode(&Rs[i]); err != nil {
-			return false, fmt.Errorf("decoding R_G: %s", err)
+	var err error
+	Rs := make([]bls12381.G1Affine, len(preST))
+	Ss := make([]bls12381.G1Affine, len(preST))
+	Ts := make([]bls12381.G1Affine, len(postST))
+	Us := make([]bls12381.G1Affine, len(postST))
+	for i := 0; i < len(preST); i++ {
+		Rs[i], Ss[i], err = preST[i].getPoints()
+		if err != nil {
+			return false, fmt.Errorf("getting pre shuffle points: %s", err)
 		}
-
-		Rs[i], Ss[i] = preShuffleTrackers[i].getPoints()
-		Ts[i], Us[i] = postShuffleTrackers[i].getPoints()
+		Ts[i], Us[i], err = postST[i].getPoints()
+		if err != nil {
+			return false, fmt.Errorf("getting post shuffle points: %s", err)
+		}
 	}
 
 	ok, err := curdleproof.Verify(
@@ -76,7 +73,10 @@ func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common
 	Rs := make([]bls12381.G1Affine, len(preTrackers))
 	Ss := make([]bls12381.G1Affine, len(preTrackers))
 	for i := 0; i < len(preTrackers); i++ {
-		Rs[i], Ss[i] = preTrackers[i].getPoints()
+		Rs[i], Ss[i], err = preTrackers[i].getPoints()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting points: %s", err)
+		}
 	}
 
 	Ts, Us, M, rs_m, err := common.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, permutation, k, rand)
