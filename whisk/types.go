@@ -20,13 +20,14 @@ const (
 	ELL                          = N - common.N_BLINDERS
 )
 
+type G1PointBytes [G1POINT_SIZE]byte
+type TrackerProofBytes [TRACKER_PROOF_SIZE]byte
+
 var g1Gen bls12381.G1Affine
 
 func init() {
 	_, _, g1Gen, _ = bls12381.Generators()
 }
-
-type G1PointBytes [G1POINT_SIZE]byte
 
 type WhiskShuffleProof struct {
 	M     bls12381.G1Jac
@@ -99,11 +100,8 @@ type TrackerProof struct {
 	S fr.Element
 }
 
-func (tp *TrackerProof) FromBytes(buf []byte) error {
-	if len(buf) != TRACKER_PROOF_SIZE {
-		return fmt.Errorf("invalid tracker proof size")
-	}
-	d := bls12381.NewDecoder(bytes.NewReader(buf))
+func (tp *TrackerProof) FromBytes(buf TrackerProofBytes) error {
+	d := bls12381.NewDecoder(bytes.NewReader(buf[:]))
 	if err := d.Decode(&tp.A); err != nil {
 		return fmt.Errorf("failed to decode A: %v", err)
 	}
@@ -114,4 +112,19 @@ func (tp *TrackerProof) FromBytes(buf []byte) error {
 		return fmt.Errorf("failed to decode s: %v", err)
 	}
 	return nil
+}
+
+func (tp *TrackerProof) Serialize() (TrackerProofBytes, error) {
+	var buf TrackerProofBytes
+	e := bls12381.NewEncoder(bytes.NewBuffer(buf[:]))
+	if err := e.Encode(tp.A); err != nil {
+		return buf, fmt.Errorf("failed to encode A: %v", err)
+	}
+	if err := e.Encode(tp.B); err != nil {
+		return buf, fmt.Errorf("failed to encode B: %v", err)
+	}
+	if err := e.Encode(tp.S); err != nil {
+		return buf, fmt.Errorf("failed to encode s: %v", err)
+	}
+	return buf, nil
 }

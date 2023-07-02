@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	curdleproof "github.com/jsign/curdleproofs"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/transcript"
@@ -128,7 +129,7 @@ func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common
 	return postTrackers, proofBytes, nil
 }
 
-func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerProofBytes []byte) (bool, error) {
+func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerProofBytes TrackerProofBytes) (bool, error) {
 	var trackerProof TrackerProof
 	if err := trackerProof.FromBytes(trackerProofBytes); err != nil {
 		return false, fmt.Errorf("decoding proof: %s", err)
@@ -159,4 +160,34 @@ func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerP
 	B_prime.Add(&B_prime, &B_prime_R)
 
 	return A_prime.Equal(&trackerProof.A) && B_prime.Equal(&trackerProof.B), nil
+}
+
+func GenerateWhiskTrackerProof(tracker WhiskTracker, k fr.Element, rand common.Rand) (TrackerProofBytes, error) {
+	rG, krG, err := tracker.getPoints()
+	if err != nil {
+		return TrackerProofBytes{}, fmt.Errorf("deserializing rG and krG: %s", err)
+	}
+
+	var kG bls12381.G1Affine
+	kG.ScalarMultiplication(&g1Gen, common.FrToBigInt(&k))
+	blinder, err := rand.GetFr()
+	if err != nil {
+		return TrackerProofBytes{}, fmt.Errorf("generating blinder: %s", err)
+	}
+	var A, B bls12381.G1Affine
+	A.ScalarMultiplication(&g1Gen, common.FrToBigInt(&blinder))
+	B.ScalarMultiplication(&rG, common.FrToBigInt(&blinder))
+
+	transcript := transcript.New(labelWhiskOpeningProof)
+	transcript.AppendPointsAffine(
+		labelTrackerOpeningProof, []bls12381.G1Affine{kG, g1Gen, krG, rG, A, B}...)
+
+	challenge := transcript.GetAndAppendChallenge(labelTrackerOpeningProofChallenge)
+
+	var s, tmp fr.Element
+	s.Add(&blinder, tmp.Mul(&challenge, &k))
+
+	trackerProof := TrackerProof{A: A, B: B, S: s}
+
+	return trackerProof.Serialize()
 }
