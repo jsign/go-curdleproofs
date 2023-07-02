@@ -53,22 +53,28 @@ func (t GroupCommitment) Eq(cm *GroupCommitment) bool {
 
 func (gc *GroupCommitment) FromReader(r io.Reader) error {
 	d := bls12381.NewDecoder(r)
-	if err := d.Decode(&gc.T_1); err != nil {
+	var tmp bls12381.G1Affine
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decoding T_1: %s", err)
 	}
-	if err := d.Decode(&gc.T_2); err != nil {
+	gc.T_1.FromAffine(&tmp)
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decoding T_2: %s", err)
 	}
+	gc.T_2.FromAffine(&tmp)
+
 	return nil
 }
 
 func (gc *GroupCommitment) Serialize(w io.Writer) error {
 	ts := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{gc.T_1, gc.T_2})
 	e := bls12381.NewEncoder(w)
-	if err := e.Encode(ts[0]); err != nil {
+	if err := e.Encode(&ts[0]); err != nil {
 		return fmt.Errorf("encoding T_1: %s", err)
 	}
-	if err := e.Encode(ts[1]); err != nil {
+	if err := e.Encode(&ts[1]); err != nil {
 		return fmt.Errorf("encoding T_2: %s", err)
 	}
 	return nil
