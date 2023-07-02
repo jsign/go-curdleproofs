@@ -7,6 +7,13 @@ import (
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	curdleproof "github.com/jsign/curdleproofs"
 	"github.com/jsign/curdleproofs/common"
+	"github.com/jsign/curdleproofs/transcript"
+)
+
+var (
+	labelWhiskOpeningProof            = []byte("whisk_opening_proof")
+	labelTrackerOpeningProof          = []byte("tracker_opening_proof")
+	labelTrackerOpeningProofChallenge = []byte("tracker_opening_proof_challenge")
 )
 
 func IsValidWhiskShuffleProof(crs CRS, preST, postST []WhiskTracker, whiskShuffleProofBytes []byte, rand *common.Rand) (bool, error) {
@@ -119,4 +126,37 @@ func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common
 	}
 
 	return postTrackers, proofBytes, nil
+}
+
+func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerProofBytes []byte) (bool, error) {
+	var trackerProof TrackerProof
+	if err := trackerProof.FromBytes(trackerProofBytes); err != nil {
+		return false, fmt.Errorf("decoding proof: %s", err)
+	}
+
+	rG, krG, err := tracker.getPoints()
+	if err != nil {
+		return false, fmt.Errorf("deserializing rG and krG: %s", err)
+	}
+	var kG bls12381.G1Affine
+	if err := kG.X.SetBytesCanonical(kComm[:]); err != nil {
+		return false, fmt.Errorf("deserializing kG: %s", err)
+	}
+
+	transcript := transcript.New(labelWhiskOpeningProof)
+	transcript.AppendPointsAffine(labelTrackerOpeningProof, []bls12381.G1Affine{kG, g1Gen, krG, rG, trackerProof.A, trackerProof.B}...)
+
+	challenge := transcript.GetAndAppendChallenge(labelTrackerOpeningProofChallenge)
+
+	var A_prime, A_prime_R bls12381.G1Affine
+	A_prime_R.ScalarMultiplication(&kG, common.FrToBigInt(&challenge))
+	A_prime.ScalarMultiplication(&g1Gen, common.FrToBigInt(&trackerProof.S))
+	A_prime.Add(&A_prime, &A_prime_R)
+
+	var B_prime_R, B_prime bls12381.G1Affine
+	B_prime_R.ScalarMultiplication(&krG, common.FrToBigInt(&challenge))
+	B_prime_R.ScalarMultiplication(&rG, common.FrToBigInt(&trackerProof.S))
+	B_prime.Add(&B_prime, &B_prime_R)
+
+	return A_prime.Equal(&trackerProof.A) && B_prime.Equal(&trackerProof.B), nil
 }

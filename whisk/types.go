@@ -20,6 +20,12 @@ const (
 	ELL                          = N - common.N_BLINDERS
 )
 
+var g1Gen bls12381.G1Affine
+
+func init() {
+	_, _, g1Gen, _ = bls12381.Generators()
+}
+
 type G1PointBytes [G1POINT_SIZE]byte
 
 type WhiskShuffleProof struct {
@@ -88,9 +94,9 @@ type CRS struct {
 }
 
 type TrackerProof struct {
-	A bls12381.G1Jac
-	B bls12381.G1Jac
-	s fr.Element
+	A bls12381.G1Affine
+	B bls12381.G1Affine
+	S fr.Element
 }
 
 func (tp *TrackerProof) FromBytes(buf []byte) error {
@@ -104,7 +110,7 @@ func (tp *TrackerProof) FromBytes(buf []byte) error {
 	if err := d.Decode(&tp.B); err != nil {
 		return fmt.Errorf("failed to decode B: %v", err)
 	}
-	if err := d.Decode(&tp.s); err != nil {
+	if err := d.Decode(&tp.S); err != nil {
 		return fmt.Errorf("failed to decode s: %v", err)
 	}
 	return nil
