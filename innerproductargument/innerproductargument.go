@@ -404,16 +404,16 @@ func (p *Proof) FromReader(r io.Reader) error {
 	}
 	p.B_d.FromAffine(&tmp)
 
-	if err := decodeAffineSliceToJac(d, &p.L_Cs); err != nil {
+	if err := common.DecodeAffineSliceToJac(d, &p.L_Cs); err != nil {
 		return fmt.Errorf("decode L_Cs: %s", err)
 	}
-	if err := decodeAffineSliceToJac(d, &p.R_Cs); err != nil {
+	if err := common.DecodeAffineSliceToJac(d, &p.R_Cs); err != nil {
 		return fmt.Errorf("decode R_Cs: %s", err)
 	}
-	if err := decodeAffineSliceToJac(d, &p.L_Ds); err != nil {
+	if err := common.DecodeAffineSliceToJac(d, &p.L_Ds); err != nil {
 		return fmt.Errorf("decode L_Ds: %s", err)
 	}
-	if err := decodeAffineSliceToJac(d, &p.R_Ds); err != nil {
+	if err := common.DecodeAffineSliceToJac(d, &p.R_Ds); err != nil {
 		return fmt.Errorf("decode R_Ds: %s", err)
 	}
 	if err := d.Decode(&p.c0); err != nil {
@@ -422,19 +422,6 @@ func (p *Proof) FromReader(r io.Reader) error {
 	if err := d.Decode(&p.d0); err != nil {
 		return fmt.Errorf("decode d0: %s", err)
 	}
-	return nil
-}
-
-func decodeAffineSliceToJac(d *bls12381.Decoder, out *[]bls12381.G1Jac) error {
-	var affs []bls12381.G1Affine
-	if err := d.Decode(&affs); err != nil {
-		return err
-	}
-	*out = make([]bls12381.G1Jac, len(affs))
-	for i := range affs {
-		(*out)[i].FromAffine(&affs[i])
-	}
-
 	return nil
 }
 
