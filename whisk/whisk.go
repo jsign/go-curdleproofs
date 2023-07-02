@@ -140,7 +140,7 @@ func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerP
 		return false, fmt.Errorf("deserializing rG and krG: %s", err)
 	}
 	var kG bls12381.G1Affine
-	if err := kG.X.SetBytesCanonical(kComm[:]); err != nil {
+	if _, err := kG.SetBytes(kComm[:]); err != nil {
 		return false, fmt.Errorf("deserializing kG: %s", err)
 	}
 
@@ -156,13 +156,13 @@ func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerP
 
 	var B_prime_R, B_prime bls12381.G1Affine
 	B_prime_R.ScalarMultiplication(&krG, common.FrToBigInt(&challenge))
-	B_prime_R.ScalarMultiplication(&rG, common.FrToBigInt(&trackerProof.S))
+	B_prime.ScalarMultiplication(&rG, common.FrToBigInt(&trackerProof.S))
 	B_prime.Add(&B_prime, &B_prime_R)
 
 	return A_prime.Equal(&trackerProof.A) && B_prime.Equal(&trackerProof.B), nil
 }
 
-func GenerateWhiskTrackerProof(tracker WhiskTracker, k fr.Element, rand common.Rand) (TrackerProofBytes, error) {
+func GenerateWhiskTrackerProof(tracker WhiskTracker, k fr.Element, rand *common.Rand) (TrackerProofBytes, error) {
 	rG, krG, err := tracker.getPoints()
 	if err != nil {
 		return TrackerProofBytes{}, fmt.Errorf("deserializing rG and krG: %s", err)
@@ -179,15 +179,14 @@ func GenerateWhiskTrackerProof(tracker WhiskTracker, k fr.Element, rand common.R
 	B.ScalarMultiplication(&rG, common.FrToBigInt(&blinder))
 
 	transcript := transcript.New(labelWhiskOpeningProof)
-	transcript.AppendPointsAffine(
-		labelTrackerOpeningProof, []bls12381.G1Affine{kG, g1Gen, krG, rG, A, B}...)
+	transcript.AppendPointsAffine(labelTrackerOpeningProof, []bls12381.G1Affine{kG, g1Gen, krG, rG, A, B}...)
 
 	challenge := transcript.GetAndAppendChallenge(labelTrackerOpeningProofChallenge)
 
 	var s, tmp fr.Element
-	s.Add(&blinder, tmp.Mul(&challenge, &k))
+	s.Sub(&blinder, tmp.Mul(&challenge, &k))
 
 	trackerProof := TrackerProof{A: A, B: B, S: s}
 
-	return trackerProof.Serialize()
+	return trackerProof.Serialize(), nil
 }

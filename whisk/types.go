@@ -75,11 +75,11 @@ func NewWhiskTracker(rG, krG bls12381.G1Affine) WhiskTracker {
 func (wt *WhiskTracker) getPoints() (bls12381.G1Affine, bls12381.G1Affine, error) {
 	var rG bls12381.G1Affine
 	var krG bls12381.G1Affine
-	if err := rG.X.SetBytesCanonical(wt.rG[:]); err != nil {
-		return bls12381.G1Affine{}, bls12381.G1Affine{}, fmt.Errorf("failed to set R_G.X: %v", err)
+	if _, err := rG.SetBytes(wt.rG[:]); err != nil {
+		return bls12381.G1Affine{}, bls12381.G1Affine{}, fmt.Errorf("failed to set rG: %v", err)
 	}
-	if err := krG.X.SetBytesCanonical(wt.krG[:]); err != nil {
-		return bls12381.G1Affine{}, bls12381.G1Affine{}, fmt.Errorf("failed to set K_RG.X: %v", err)
+	if _, err := krG.SetBytes(wt.krG[:]); err != nil {
+		return bls12381.G1Affine{}, bls12381.G1Affine{}, fmt.Errorf("failed to set krG: %v", err)
 	}
 	return rG, krG, nil
 }
@@ -114,17 +114,13 @@ func (tp *TrackerProof) FromBytes(buf TrackerProofBytes) error {
 	return nil
 }
 
-func (tp *TrackerProof) Serialize() (TrackerProofBytes, error) {
-	var buf TrackerProofBytes
-	e := bls12381.NewEncoder(bytes.NewBuffer(buf[:]))
-	if err := e.Encode(tp.A); err != nil {
-		return buf, fmt.Errorf("failed to encode A: %v", err)
-	}
-	if err := e.Encode(tp.B); err != nil {
-		return buf, fmt.Errorf("failed to encode B: %v", err)
-	}
-	if err := e.Encode(tp.S); err != nil {
-		return buf, fmt.Errorf("failed to encode s: %v", err)
-	}
-	return buf, nil
+func (tp *TrackerProof) Serialize() TrackerProofBytes {
+	// TODO(jsign): avoid alloc.
+	var buf bytes.Buffer
+	e := bls12381.NewEncoder(&buf)
+	// bytes.Buffer, by design, never fails as an io.Writer.
+	_ = e.Encode(&tp.A)
+	_ = e.Encode(&tp.B)
+	_ = e.Encode(&tp.S)
+	return TrackerProofBytes(buf.Bytes())
 }
