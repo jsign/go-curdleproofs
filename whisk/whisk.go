@@ -13,14 +13,14 @@ func IsValidWhiskShuffleProof(
 	crs CRS,
 	preShuffleTrackers []WhiskTracker,
 	postShuffleTrackers []WhiskTracker,
-	shuffleProofBytes []byte,
+	whiskShuffleProofBytes []byte,
 	rand *common.Rand) (bool, error) {
 	if len(preShuffleTrackers) != len(postShuffleTrackers) {
 		return false, fmt.Errorf("pre and post shuffle trackers must be the same length")
 	}
 
 	var whiskProof WhiskShuffleProof
-	if err := whiskProof.FromReader(bytes.NewReader(shuffleProofBytes)); err != nil {
+	if err := whiskProof.FromReader(bytes.NewReader(whiskShuffleProofBytes)); err != nil {
 		return false, fmt.Errorf("decoding proof: %s", err)
 	}
 
@@ -29,8 +29,13 @@ func IsValidWhiskShuffleProof(
 	Ts := make([]bls12381.G1Affine, len(postShuffleTrackers))
 	Us := make([]bls12381.G1Affine, len(postShuffleTrackers))
 	for i := 0; i < len(preShuffleTrackers); i++ {
-		Rs[i], Ss[i] = preShuffleTrackers[i].getCoordinates()
-		Ts[i], Us[i] = postShuffleTrackers[i].getCoordinates()
+		d := bls12381.NewDecoder(bytes.NewReader(preShuffleTrackers[i].rg[:]))
+		if err := d.Decode(&Rs[i]); err != nil {
+			return false, fmt.Errorf("decoding R_G: %s", err)
+		}
+
+		Rs[i], Ss[i] = preShuffleTrackers[i].getPoints()
+		Ts[i], Us[i] = postShuffleTrackers[i].getPoints()
 	}
 
 	ok, err := curdleproof.Verify(
@@ -71,7 +76,7 @@ func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common
 	Rs := make([]bls12381.G1Affine, len(preTrackers))
 	Ss := make([]bls12381.G1Affine, len(preTrackers))
 	for i := 0; i < len(preTrackers); i++ {
-		Rs[i], Ss[i] = preTrackers[i].getCoordinates()
+		Rs[i], Ss[i] = preTrackers[i].getPoints()
 	}
 
 	Ts, Us, M, rs_m, err := common.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, permutation, k, rand)
@@ -110,10 +115,7 @@ func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common
 
 	postTrackers := make([]WhiskTracker, len(preTrackers))
 	for i := 0; i < len(preTrackers); i++ {
-		postTrackers[i] = WhiskTracker{
-			R_G:  Rs[i],
-			K_RG: Ss[i],
-		}
+		postTrackers[i] = NewWhiskTracker(Rs[i], Ss[i])
 	}
 
 	return postTrackers, proofBytes, nil

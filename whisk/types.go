@@ -6,16 +6,21 @@ import (
 	"io"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	curdleproof "github.com/jsign/curdleproofs"
 	"github.com/jsign/curdleproofs/common"
 )
 
 const (
+	G1POINT_SIZE                 = 48
 	WHISK_MAX_SHUFFLE_PROOF_SIZE = 1 << 15
 	WHISK_MAX_OPENING_PROOF_SIZE = 1 << 10
+	TRACKER_PROOF_SIZE           = 128
 	N                            = 128
 	ELL                          = N - common.N_BLINDERS
 )
+
+type G1PointBytes [G1POINT_SIZE]byte
 
 type WhiskShuffleProof struct {
 	M     bls12381.G1Jac
@@ -23,6 +28,7 @@ type WhiskShuffleProof struct {
 }
 
 func (wsp *WhiskShuffleProof) FromReader(r io.Reader) error {
+	// TODO(jsign): revisit since "decoder" for single element is overkill
 	d := bls12381.NewDecoder(r)
 	if err := d.Decode(&wsp.M); err != nil {
 		return fmt.Errorf("failed to decode M: %v", err)
@@ -48,12 +54,23 @@ func (wsp *WhiskShuffleProof) Serialize() ([]byte, error) {
 }
 
 type WhiskTracker struct {
-	R_G  bls12381.G1Affine
-	K_RG bls12381.G1Affine
+	rg  G1PointBytes
+	krg G1PointBytes
 }
 
-func (wt *WhiskTracker) getCoordinates() (bls12381.G1Affine, bls12381.G1Affine) {
-	return wt.R_G, wt.K_RG
+func NewWhiskTracker(R_G, K_RG bls12381.G1Affine) WhiskTracker {
+	return WhiskTracker{
+		rg:  R_G.Bytes(),
+		krg: K_RG.Bytes(),
+	}
+}
+
+func (wt *WhiskTracker) getPoints() (bls12381.G1Affine, bls12381.G1Affine) {
+	var R_G bls12381.G1Affine
+	var K_RG bls12381.G1Affine
+	R_G.Unmarshal(wt.rg[:])
+	K_RG.Unmarshal(wt.krg[:])
+	return R_G, K_RG
 }
 
 type CRS struct {
@@ -64,4 +81,27 @@ type CRS struct {
 	Gu   bls12381.G1Jac
 	Gsum bls12381.G1Affine
 	Hsum bls12381.G1Affine
+}
+
+type TrackerProof struct {
+	A bls12381.G1Jac
+	B bls12381.G1Jac
+	s fr.Element
+}
+
+func (tp *TrackerProof) FromBytes(buf []byte) error {
+	if len(buf) != TRACKER_PROOF_SIZE {
+		return fmt.Errorf("invalid tracker proof size")
+	}
+	d := bls12381.NewDecoder(bytes.NewReader(buf))
+	if err := d.Decode(&tp.A); err != nil {
+		return fmt.Errorf("failed to decode A: %v", err)
+	}
+	if err := d.Decode(&tp.B); err != nil {
+		return fmt.Errorf("failed to decode B: %v", err)
+	}
+	if err := d.Decode(&tp.s); err != nil {
+		return fmt.Errorf("failed to decode s: %v", err)
+	}
+	return nil
 }
