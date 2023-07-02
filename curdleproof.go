@@ -318,22 +318,30 @@ func Verify(
 }
 
 func (p *Proof) FromReader(r io.Reader) error {
+	var tmp bls12381.G1Affine
 	d := bls12381.NewDecoder(r)
-	if err := d.Decode(&p.A); err != nil {
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decoding A: %s", err)
 	}
+	p.A.FromAffine(&tmp)
+
 	if err := p.T.FromReader(r); err != nil {
 		return fmt.Errorf("decoding T: %s", err)
 	}
 	if err := p.U.FromReader(r); err != nil {
 		return fmt.Errorf("decoding U: %s", err)
 	}
-	if err := d.Decode(&p.R); err != nil {
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decoding R: %s", err)
 	}
-	if err := d.Decode(&p.S); err != nil {
+	p.R.FromAffine(&tmp)
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decoding S: %s", err)
 	}
+	p.S.FromAffine(&tmp)
+
 	if err := p.proofSamePermutation.FromReader(r); err != nil {
 		return fmt.Errorf("decoding proofSamePermutation: %s", err)
 	}
@@ -350,7 +358,7 @@ func (p *Proof) FromReader(r io.Reader) error {
 func (p *Proof) Serialize(w io.Writer) error {
 	e := bls12381.NewEncoder(w)
 	ars := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{p.A, p.R, p.S})
-	if err := e.Encode(ars[0]); err != nil {
+	if err := e.Encode(&ars[0]); err != nil {
 		panic(fmt.Errorf("encoding A: %s", err))
 	}
 	if err := p.T.Serialize(w); err != nil {
@@ -359,10 +367,10 @@ func (p *Proof) Serialize(w io.Writer) error {
 	if err := p.U.Serialize(w); err != nil {
 		return fmt.Errorf("encoding U: %s", err)
 	}
-	if err := e.Encode(ars[1]); err != nil {
+	if err := e.Encode(&ars[1]); err != nil {
 		return fmt.Errorf("encoding R: %s", err)
 	}
-	if err := e.Encode(ars[2]); err != nil {
+	if err := e.Encode(&ars[2]); err != nil {
 		return fmt.Errorf("encoding S: %s", err)
 	}
 	if err := p.proofSamePermutation.Serialize(w); err != nil {

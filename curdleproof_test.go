@@ -1,6 +1,7 @@
 package curdleproof
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -163,6 +164,20 @@ func TestSoundness(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, ok)
 
+	})
+
+	t.Run("encode/decode", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		require.NoError(t, proof.Serialize(buf))
+		expected := buf.Bytes()
+
+		var proof2 Proof
+		require.NoError(t, proof2.FromReader(buf))
+
+		buf2 := bytes.NewBuffer(nil)
+		require.NoError(t, proof2.Serialize(buf2))
+
+		require.Equal(t, expected, buf2.Bytes())
 	})
 }
 
