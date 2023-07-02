@@ -21,7 +21,6 @@ func TestEncodeDecode(t *testing.T) {
 	var t2 bls12381.G1Affine
 	tmp.SetRandom()
 	t2.ScalarMultiplication(&g1, common.FrToBigInt(&tmp))
-
 	var gc GroupCommitment
 	gc.T_1.FromAffine(&t1)
 	gc.T_2.FromAffine(&t2)

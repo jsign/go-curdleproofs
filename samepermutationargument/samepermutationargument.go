@@ -164,10 +164,14 @@ func Verify(
 }
 
 func (p *Proof) FromReader(r io.Reader) error {
+	var tmp bls12381.G1Affine
 	d := bls12381.NewDecoder(r)
-	if err := d.Decode(&p.B); err != nil {
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("failed to decode B: %s", err)
 	}
+	p.B.FromAffine(&tmp)
+
 	if err := p.gpaProof.FromReader(r); err != nil {
 		return fmt.Errorf("failed to decode GPA proof: %s", err)
 	}
@@ -178,7 +182,7 @@ func (p *Proof) Serialize(w io.Writer) error {
 	e := bls12381.NewEncoder(w)
 	var bAffine bls12381.G1Affine
 	bAffine.FromJacobian(&p.B)
-	if err := e.Encode(bAffine); err != nil {
+	if err := e.Encode(&bAffine); err != nil {
 		return fmt.Errorf("failed to encode B: %s", err)
 	}
 	if err := p.gpaProof.Serialize(w); err != nil {

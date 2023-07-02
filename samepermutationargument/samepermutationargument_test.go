@@ -1,6 +1,7 @@
 package samepermutationargument
 
 import (
+	"bytes"
 	"testing"
 
 	mrand "math/rand"
@@ -21,25 +22,22 @@ func TestSamePermutationArgument(t *testing.T) {
 	rand, err := common.NewRand(0)
 	require.NoError(t, err)
 
-	var proof Proof
-	{
-		crs, A, M, as, perm, rs_a, rs_m := setup(t, n)
-		transcript := transcript.New([]byte("sameperm"))
-		proof, err = Prove(
-			crs,
-			A,
-			M,
-			as,
-			perm,
-			rs_a,
-			rs_m,
-			transcript,
-			rand,
-		)
-		require.NoError(t, err)
-	}
+	crs, A, M, as, perm, rs_a, rs_m := setup(t, n)
+	transcriptProver := transcript.New([]byte("sameperm"))
+	proof, err := Prove(
+		crs,
+		A,
+		M,
+		as,
+		perm,
+		rs_a,
+		rs_m,
+		transcriptProver,
+		rand,
+	)
+	require.NoError(t, err)
 
-	{
+	t.Run("completeness", func(t *testing.T) {
 		crs, A, M, as, _, _, _ := setup(t, n)
 		transcriptVerifier := transcript.New([]byte("sameperm"))
 		msmAccumulator := msmaccumulator.New()
@@ -72,7 +70,21 @@ func TestSamePermutationArgument(t *testing.T) {
 		ok, err = msmAccumulator.Verify()
 		require.NoError(t, err)
 		require.True(t, ok)
-	}
+	})
+
+	t.Run("encode/decode", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		require.NoError(t, proof.Serialize(buf))
+		expected := buf.Bytes()
+
+		var proof2 Proof
+		require.NoError(t, proof2.FromReader(buf))
+
+		buf2 := bytes.NewBuffer(nil)
+		require.NoError(t, proof2.Serialize(buf2))
+
+		require.Equal(t, expected, buf2.Bytes())
+	})
 }
 
 func setup(t *testing.T, n int) (CRS, bls12381.G1Jac, bls12381.G1Jac, []fr.Element, []uint32, []fr.Element, []fr.Element) {
