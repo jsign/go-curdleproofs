@@ -1,6 +1,7 @@
 package samescalarargument
 
 import (
+	"bytes"
 	"testing"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -56,14 +57,31 @@ func TestProveVerify(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	transcriptVerifier := transcript.New([]byte("same_scalar"))
-	require.True(t, Verify(
-		proof,
-		crs,
-		R,
-		S,
-		T,
-		U,
-		transcriptVerifier,
-	))
+	t.Run("completeness", func(t *testing.T) {
+		transcriptVerifier := transcript.New([]byte("same_scalar"))
+		require.True(t, Verify(
+			proof,
+			crs,
+			R,
+			S,
+			T,
+			U,
+			transcriptVerifier,
+		))
+	})
+
+	t.Run("encode/decode", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		require.NoError(t, proof.Serialize(buf))
+		expected := buf.Bytes()
+
+		var proof2 Proof
+		require.NoError(t, proof2.FromReader(buf))
+
+		buf2 := bytes.NewBuffer(nil)
+		require.NoError(t, proof2.Serialize(buf2))
+
+		require.Equal(t, expected, buf2.Bytes())
+
+	})
 }

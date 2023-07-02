@@ -127,13 +127,13 @@ func (p *Proof) Serialize(w io.Writer) error {
 		return fmt.Errorf("write B: %s", err)
 	}
 	e := bls12381.NewEncoder(w)
-	if err := e.Encode(p.Z_k); err != nil {
+	if err := e.Encode(&p.Z_k); err != nil {
 		return fmt.Errorf("write Z_k: %s", err)
 	}
-	if err := e.Encode(p.Z_t); err != nil {
+	if err := e.Encode(&p.Z_t); err != nil {
 		return fmt.Errorf("write Z_t: %s", err)
 	}
-	if err := e.Encode(p.Z_u); err != nil {
+	if err := e.Encode(&p.Z_u); err != nil {
 		return fmt.Errorf("write Z_u: %s", err)
 	}
 	return nil
