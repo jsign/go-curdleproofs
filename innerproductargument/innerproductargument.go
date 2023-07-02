@@ -391,23 +391,29 @@ func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([
 }
 
 func (p *Proof) FromReader(r io.Reader) error {
+	var tmp bls12381.G1Affine
 	d := bls12381.NewDecoder(r)
-	if err := d.Decode(&p.B_c); err != nil {
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decode B_c: %s", err)
 	}
-	if err := d.Decode(&p.B_d); err != nil {
+	p.B_c.FromAffine(&tmp)
+
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decode B_d: %s", err)
 	}
-	if err := d.Decode(&p.L_Cs); err != nil {
+	p.B_d.FromAffine(&tmp)
+
+	if err := decodeAffineSliceToJac(d, &p.L_Cs); err != nil {
 		return fmt.Errorf("decode L_Cs: %s", err)
 	}
-	if err := d.Decode(&p.R_Cs); err != nil {
+	if err := decodeAffineSliceToJac(d, &p.R_Cs); err != nil {
 		return fmt.Errorf("decode R_Cs: %s", err)
 	}
-	if err := d.Decode(&p.L_Ds); err != nil {
+	if err := decodeAffineSliceToJac(d, &p.L_Ds); err != nil {
 		return fmt.Errorf("decode L_Ds: %s", err)
 	}
-	if err := d.Decode(&p.R_Ds); err != nil {
+	if err := decodeAffineSliceToJac(d, &p.R_Ds); err != nil {
 		return fmt.Errorf("decode R_Ds: %s", err)
 	}
 	if err := d.Decode(&p.c0); err != nil {
@@ -419,16 +425,28 @@ func (p *Proof) FromReader(r io.Reader) error {
 	return nil
 }
 
+func decodeAffineSliceToJac(d *bls12381.Decoder, out *[]bls12381.G1Jac) error {
+	var affs []bls12381.G1Affine
+	if err := d.Decode(&affs); err != nil {
+		return err
+	}
+	*out = make([]bls12381.G1Jac, len(affs))
+	for i := range affs {
+		(*out)[i].FromAffine(&affs[i])
+	}
+
+	return nil
+}
+
 func (p *Proof) Serialize(w io.Writer) error {
 	b_cd := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{p.B_c, p.B_d})
 	e := bls12381.NewEncoder(w)
-	if err := e.Encode(b_cd[0]); err != nil {
+	if err := e.Encode(&b_cd[0]); err != nil {
 		return fmt.Errorf("encode B_c: %s", err)
 	}
-	if err := e.Encode(b_cd[1]); err != nil {
+	if err := e.Encode(&b_cd[1]); err != nil {
 		return fmt.Errorf("encode B_d: %s", err)
 	}
-
 	affL_Cs := bls12381.BatchJacobianToAffineG1(p.L_Cs)
 	if err := e.Encode(affL_Cs); err != nil {
 		return fmt.Errorf("encode L_Cs: %s", err)
@@ -445,10 +463,10 @@ func (p *Proof) Serialize(w io.Writer) error {
 	if err := e.Encode(affR_Ds); err != nil {
 		return fmt.Errorf("encode R_Ds: %s", err)
 	}
-	if err := e.Encode(p.c0); err != nil {
+	if err := e.Encode(&p.c0); err != nil {
 		return fmt.Errorf("encode c0: %s", err)
 	}
-	if err := e.Encode(p.d0); err != nil {
+	if err := e.Encode(&p.d0); err != nil {
 		return fmt.Errorf("encode d0: %s", err)
 	}
 	return nil

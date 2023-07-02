@@ -1,6 +1,7 @@
 package innerproductargument
 
 import (
+	"bytes"
 	"testing"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -35,7 +36,7 @@ func TestInnerProductArgument(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Run("Completeness", func(t *testing.T) {
+	t.Run("completeness", func(t *testing.T) {
 		transcript := transcript.New([]byte("IPA"))
 		msmAccumulator := msmaccumulator.New()
 		crs, B, C, z, _, _, us := setup(t, n)
@@ -60,6 +61,20 @@ func TestInnerProductArgument(t *testing.T) {
 		ok, err = msmAccumulator.Verify()
 		require.NoError(t, err)
 		require.True(t, ok)
+	})
+
+	t.Run("encode/decode", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		require.NoError(t, proof.Serialize(buf))
+		expected := buf.Bytes()
+
+		var proof2 Proof
+		require.NoError(t, proof2.FromReader(buf))
+
+		buf2 := bytes.NewBuffer(nil)
+		require.NoError(t, proof2.Serialize(buf2))
+
+		require.Equal(t, expected, buf2.Bytes())
 	})
 }
 
