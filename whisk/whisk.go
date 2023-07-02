@@ -45,15 +45,7 @@ func IsValidWhiskShuffleProof(crs CRS, preST, postST []WhiskTracker, whiskShuffl
 
 	ok, err := curdleproof.Verify(
 		whiskProof.Proof,
-		curdleproof.CRS{
-			Gs:   crs.Gs,
-			Hs:   crs.Hs,
-			H:    crs.H,
-			Gt:   crs.Gt,
-			Gu:   crs.Gu,
-			Gsum: crs.Gsum,
-			Hsum: crs.Hsum,
-		},
+		crs,
 		Rs,
 		Ss,
 		Ts,
@@ -93,15 +85,7 @@ func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common
 	}
 
 	proof, err := curdleproof.Prove(
-		curdleproof.CRS{
-			Gs:   crs.Gs,
-			Hs:   crs.Hs,
-			H:    crs.H,
-			Gt:   crs.Gt,
-			Gu:   crs.Gu,
-			Gsum: crs.Gsum,
-			Hsum: crs.Hsum,
-		},
+		crs,
 		Rs,
 		Ss,
 		Ts,

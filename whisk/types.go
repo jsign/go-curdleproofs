@@ -84,15 +84,7 @@ func (wt *WhiskTracker) getPoints() (bls12381.G1Affine, bls12381.G1Affine, error
 	return rG, krG, nil
 }
 
-type CRS struct {
-	Gs   []bls12381.G1Affine
-	Hs   []bls12381.G1Affine
-	H    bls12381.G1Jac
-	Gt   bls12381.G1Jac
-	Gu   bls12381.G1Jac
-	Gsum bls12381.G1Affine
-	Hsum bls12381.G1Affine
-}
+type CRS = curdleproof.CRS
 
 type TrackerProof struct {
 	A bls12381.G1Affine
