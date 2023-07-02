@@ -1,6 +1,7 @@
 package samemultiscalarargument
 
 import (
+	"bytes"
 	"testing"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -15,29 +16,26 @@ func TestSameMultiscalarArgument(t *testing.T) {
 	t.Parallel()
 
 	n := 128
-	var proof Proof
-	{
-		transcript := transcript.New([]byte("same_msm"))
-		rand, err := common.NewRand(42)
-		require.NoError(t, err)
+	transcriptProver := transcript.New([]byte("same_msm"))
+	rand, err := common.NewRand(42)
+	require.NoError(t, err)
 
-		crs_Gs, A, Z_t, Z_u, Ts, Us, xs := setup(t, n)
+	crs_Gs, A, Z_t, Z_u, Ts, Us, xs := setup(t, n)
 
-		proof, err = Prove(
-			crs_Gs,
-			A,
-			Z_t,
-			Z_u,
-			Ts,
-			Us,
-			xs,
-			transcript,
-			rand,
-		)
-		require.NoError(t, err)
-	}
+	proof, err := Prove(
+		crs_Gs,
+		A,
+		Z_t,
+		Z_u,
+		Ts,
+		Us,
+		xs,
+		transcriptProver,
+		rand,
+	)
+	require.NoError(t, err)
 
-	{
+	t.Run("completeness", func(t *testing.T) {
 		transcriptVerifier := transcript.New([]byte("same_msm"))
 		rand, err := common.NewRand(43)
 		require.NoError(t, err)
@@ -63,7 +61,22 @@ func TestSameMultiscalarArgument(t *testing.T) {
 		ok, err = msmAccumulator.Verify()
 		require.NoError(t, err)
 		require.True(t, ok)
-	}
+	})
+
+	t.Run("encode/decode", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		require.NoError(t, proof.Serialize(buf))
+		expected := buf.Bytes()
+
+		var proof2 Proof
+		require.NoError(t, proof2.FromReader(buf))
+
+		buf2 := bytes.NewBuffer(nil)
+		require.NoError(t, proof2.Serialize(buf2))
+
+		require.Equal(t, expected, buf2.Bytes())
+	})
+
 }
 
 func setup(t *testing.T, n int) ([]bls12381.G1Affine, bls12381.G1Jac, bls12381.G1Jac, bls12381.G1Jac, []bls12381.G1Affine, []bls12381.G1Affine, []fr.Element) {
