@@ -1,6 +1,7 @@
 package grandproductargument
 
 import (
+	"bytes"
 	"testing"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -63,7 +64,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Run("Completeness", func(t *testing.T) {
+	t.Run("completeness", func(t *testing.T) {
 		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n)
 		ok, err := Verify(
 			proof,
@@ -85,7 +86,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 		require.True(t, ok)
 	})
 
-	t.Run("Soundness - Wrong result", func(t *testing.T) {
+	t.Run("soundness - wrong result", func(t *testing.T) {
 		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n)
 		one := fr.One()
 		var resultPlusOne fr.Element
@@ -110,7 +111,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 		require.False(t, ok) // Note we expect this to be false.
 	})
 
-	t.Run("Soundness - Wrong commitment to Bs", func(t *testing.T) {
+	t.Run("soundness - wrong commitment to Bs", func(t *testing.T) {
 		crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, n)
 		randScalar, err := rand.GetFr()
 		require.NoError(t, err)
@@ -134,6 +135,20 @@ func TestCompletenessAndSoundess(t *testing.T) {
 		ok, err = msmAccumulator.Verify()
 		require.NoError(t, err)
 		require.False(t, ok) // Note we expect this to be false.
+	})
+
+	t.Run("encode/decode", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		require.NoError(t, proof.Serialize(buf))
+		expected := buf.Bytes()
+
+		var proof2 Proof
+		require.NoError(t, proof2.FromReader(buf))
+
+		buf2 := bytes.NewBuffer(nil)
+		require.NoError(t, proof2.Serialize(buf2))
+
+		require.Equal(t, expected, buf2.Bytes())
 	})
 }
 

@@ -287,9 +287,11 @@ func Verify(
 
 func (p *Proof) FromReader(r io.Reader) error {
 	d := bls12381.NewDecoder(r)
-	if err := d.Decode(&p.C); err != nil {
+	var tmp bls12381.G1Affine
+	if err := d.Decode(&tmp); err != nil {
 		return fmt.Errorf("decode C: %s", err)
 	}
+	p.C.FromAffine(&tmp)
 	if err := d.Decode(&p.Rp); err != nil {
 		return fmt.Errorf("decode Rp: %s", err)
 	}
@@ -303,7 +305,7 @@ func (p *Proof) Serialize(w io.Writer) error {
 	var cAffine bls12381.G1Affine
 	cAffine.FromJacobian(&p.C)
 	e := bls12381.NewEncoder(w)
-	if err := e.Encode(cAffine); err != nil {
+	if err := e.Encode(&cAffine); err != nil {
 		return fmt.Errorf("encode C: %s", err)
 	}
 	if err := e.Encode(&p.Rp); err != nil {
