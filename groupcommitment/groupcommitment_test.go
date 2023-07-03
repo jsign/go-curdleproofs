@@ -16,10 +16,12 @@ func TestEncodeDecode(t *testing.T) {
 	_, _, g1, _ := bls12381.Generators()
 	var tmp fr.Element
 	var t1 bls12381.G1Affine
-	tmp.SetRandom()
+	_, err := tmp.SetRandom()
+	require.NoError(t, err)
 	t1.ScalarMultiplication(&g1, common.FrToBigInt(&tmp))
 	var t2 bls12381.G1Affine
-	tmp.SetRandom()
+	_, err = tmp.SetRandom()
+	require.NoError(t, err)
 	t2.ScalarMultiplication(&g1, common.FrToBigInt(&tmp))
 	var gc GroupCommitment
 	gc.T_1.FromAffine(&t1)
