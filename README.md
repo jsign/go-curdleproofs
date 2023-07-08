@@ -6,8 +6,7 @@ It's the backbone of [Whisk](https://ethresear.ch/t/whisk-a-practical-shuffle-ba
 ## Status
 
 This library is in feature parity with the Rust reference implementation. 
-
-This library is not yet audited, and should not be used in production. Here be dragons!
+Also, is not yet audited, so be careful if you're considering using it in production. 
 
 ## Benchmarks
 
