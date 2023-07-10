@@ -211,7 +211,7 @@ func BenchmarkVerifier(b *testing.B) {
 	rand, err := common.NewRand(42)
 	require.NoError(b, err)
 
-	for _, n := range []int{64, 128, 256} {
+	for _, n := range []int{64, 128, 256, 512} {
 		b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
 			crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, n)
 			proof, err := Prove(

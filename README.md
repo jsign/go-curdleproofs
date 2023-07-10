@@ -16,13 +16,14 @@ goos: linux
 goarch: amd64
 pkg: github.com/jsign/curdleproofs
 cpu: AMD Ryzen 7 3800XT 8-Core Processor            
-BenchmarkProver/shuffled_elements=60-16                       12          94740346 ns/op
-BenchmarkProver/shuffled_elements=124-16                       7         150115008 ns/op
-BenchmarkProver/shuffled_elements=252-16                       5         238523279 ns/op
-BenchmarkProver/shuffled_elements=508-16                       3         404879574 ns/op
-BenchmarkVerifier/shuffled_elements=60-16                    115          10175408 ns/op
-BenchmarkVerifier/shuffled_elements=124-16                    99          11870850 ns/op
-BenchmarkVerifier/shuffled_elements=252-16                    72          15094033 ns/op
+BenchmarkProver/shuffled_elements=60-16                       12       96406285 ns/op
+BenchmarkProver/shuffled_elements=124-16                       7      150210173 ns/op
+BenchmarkProver/shuffled_elements=252-16                       5         245561105 ns/op
+BenchmarkProver/shuffled_elements=508-16                       3         412504547 ns/op
+BenchmarkVerifier/shuffled_elements=60-16                    100          12048653 ns/op
+BenchmarkVerifier/shuffled_elements=124-16                    87          12346139 ns/op
+BenchmarkVerifier/shuffled_elements=252-16                    69          15268277 ns/op
+BenchmarkVerifier/shuffled_elements=508-16                    51          20813543 ns/op
 ```
 
 The implementation has the optimizations mentioned in the paper and some extra minor ones. No extra effort was made to optimize further (i.e: there might be other trivial or advanced cryptography or engineering to apply).
