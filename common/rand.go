@@ -46,6 +46,20 @@ func (r *Rand) GetFr() (fr.Element, error) {
 	}
 }
 
+// TODO: this function is temporary. It returns a big.Int
+// from some random 128 bytes. It should be better defined
+// regarding the underlying group order.
+func (r *Rand) GetBigInt128() (big.Int, error) {
+	var byts [128]byte
+	if _, err := r.rand.Read(byts[:]); err != nil {
+		return big.Int{}, fmt.Errorf("get randomness: %s", err)
+
+	}
+	var scalar big.Int
+	scalar.SetBytes(byts[:])
+	return scalar, nil
+}
+
 func (r *Rand) GetFrs(n int) ([]fr.Element, error) {
 	var err error
 	ret := make([]fr.Element, n)
