@@ -22,7 +22,7 @@ func TestProveVerify(t *testing.T) {
 		genRandomGroupElement func() (group.Element, error)
 	}{
 		{
-			name:  "G1 Jacobian",
+			name:  "G1",
 			group: &group.GroupG1{},
 			genRandomGroupElement: func() (group.Element, error) {
 				randG1Jac, err := rand.GetG1Jac()
@@ -30,6 +30,17 @@ func TestProveVerify(t *testing.T) {
 					return nil, err
 				}
 				return group.FromG1Jac(randG1Jac), nil
+			},
+		},
+		{
+			name:  "Gt",
+			group: &group.GroupGt{},
+			genRandomGroupElement: func() (group.Element, error) {
+				randGt, err := rand.GetGt()
+				if err != nil {
+					return nil, err
+				}
+				return group.FromGt(randGt), nil
 			},
 		},
 	}

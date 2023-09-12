@@ -125,3 +125,13 @@ func (r *Rand) GeneratePermutation(n int) ([]uint32, error) {
 
 	return permutation, nil
 }
+
+// Experimental
+func (r *Rand) GetGt() (bls12381.GT, error) {
+	var randElem bls12381.GT
+	if _, err := randElem.SetRandom(); err != nil {
+		return bls12381.GT{}, fmt.Errorf("get random GT: %s", err)
+	}
+
+	return randElem, nil
+}

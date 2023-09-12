@@ -18,22 +18,36 @@ type GtElement struct {
 	inner bls12381.GT
 }
 
+func FromGt(gt bls12381.GT) Element {
+	return &GtElement{
+		inner: gt,
+	}
+}
+
 func (z *GtElement) ScalarMultiplication(e Element, scalar *big.Int) Element {
-	panic("TODO")
+	ee := e.(*GtElement).inner
+	z.inner.Exp(ee, scalar)
+	return z
 }
 
 func (z *GtElement) Set(e Element) Element {
-	panic("TODO")
+	ee := e.(*GtElement).inner
+	z.inner.Set(&ee)
+	return z
 }
 
 func (z *GtElement) AddAssign(e Element) Element {
-	panic("TODO")
+	ee := e.(*GtElement).inner
+	z.inner.Mul(&z.inner, &ee)
+	return z
 }
 
 func (z *GtElement) Equal(e Element) bool {
-	panic("TODO")
+	ee := e.(*GtElement).inner
+	return z.inner.Equal(&ee)
 }
 
 func (z *GtElement) Bytes() []byte {
-	panic("TODO")
+	res := z.inner.Bytes()
+	return res[:]
 }
