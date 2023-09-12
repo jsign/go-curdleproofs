@@ -1,7 +1,9 @@
 package samescalarargument
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/group"
@@ -73,6 +75,7 @@ func TestProveVerify(t *testing.T) {
 			T := group.NewGroupCommitment(config.group, crs.Gt, crs.H, tmp.ScalarMultiplication(R, &k), &r_t)
 			U := group.NewGroupCommitment(config.group, crs.Gu, crs.H, tmp.ScalarMultiplication(S, &k), &r_u)
 
+			now := time.Now()
 			proof, err := Prove(
 				config.group,
 				crs,
@@ -87,9 +90,11 @@ func TestProveVerify(t *testing.T) {
 				rand,
 			)
 			require.NoError(t, err)
+			fmt.Printf("Prove: %s\n", time.Since(now))
 
 			t.Run("completeness", func(t *testing.T) {
 				transcriptVerifier := transcript.New([]byte("same_scalar"))
+				now := time.Now()
 				require.True(t, Verify(
 					config.group,
 					proof,
@@ -100,6 +105,7 @@ func TestProveVerify(t *testing.T) {
 					U,
 					transcriptVerifier,
 				))
+				fmt.Printf("Verify: %s\n", time.Since(now))
 			})
 		})
 	}
