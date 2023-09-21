@@ -133,5 +133,5 @@ func (r *Rand) GetGt() (bls12381.GT, error) {
 		return bls12381.GT{}, fmt.Errorf("get random GT: %s", err)
 	}
 
-	return randElem, nil
+	return bls12381.FinalExponentiation(&randElem), nil
 }
