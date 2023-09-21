@@ -64,11 +64,11 @@ func TestProveVerify(t *testing.T) {
 			S, err := config.genRandomGroupElement()
 			require.NoError(t, err)
 
-			k, err := rand.GetBigInt128()
+			k, err := rand.GetFrBigInt()
 			require.NoError(t, err)
-			r_t, err := rand.GetBigInt128()
+			r_t, err := rand.GetFrBigInt()
 			require.NoError(t, err)
-			r_u, err := rand.GetBigInt128()
+			r_u, err := rand.GetFrBigInt()
 			require.NoError(t, err)
 
 			tmp := config.group.CreateElement()

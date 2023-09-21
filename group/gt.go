@@ -26,7 +26,7 @@ func FromGt(gt bls12381.GT) Element {
 
 func (z *GtElement) ScalarMultiplication(e Element, scalar *big.Int) Element {
 	ee := e.(*GtElement).inner
-	z.inner.Exp(ee, scalar)
+	z.inner.ExpGLV(ee, scalar)
 	return z
 }
 
