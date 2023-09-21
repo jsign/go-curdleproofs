@@ -2,7 +2,6 @@ package transcript
 
 import (
 	"bytes"
-	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -68,15 +67,6 @@ func (t *Transcript) GetAndAppendChallenge(label []byte) fr.Element {
 			return challenge
 		}
 	}
-}
-
-// TEMP: experimental.
-func (t *Transcript) GetAndAppendChallengeBigInt(label []byte) big.Int {
-	var dest [128]byte
-	t.inner.ChallengeBytes(label, dest[:])
-	var challenge big.Int
-	challenge.SetBytes(dest[:])
-	return challenge
 }
 
 func (t *Transcript) GetAndAppendChallenges(label []byte, count int) []fr.Element {

@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 )
 
 type GroupG1 struct {
@@ -24,9 +25,11 @@ func FromG1Jac(g1Jac bls12381.G1Jac) Element {
 	}
 }
 
-func (z *G1Element) ScalarMultiplication(e Element, scalar *big.Int) Element {
+func (z *G1Element) ScalarMultiplication(e Element, scalar fr.Element) Element {
 	ee := e.(*G1Element).inner
-	z.inner.ScalarMultiplication(&ee, scalar)
+	var bi big.Int
+	scalar.BigInt(&bi)
+	z.inner.ScalarMultiplication(&ee, &bi)
 	return z
 }
 

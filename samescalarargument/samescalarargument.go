@@ -3,7 +3,6 @@ package samescalarargument
 import (
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
@@ -25,9 +24,9 @@ type CRS struct {
 type Proof struct {
 	A   group.GroupCommitment
 	B   group.GroupCommitment
-	Z_k big.Int
-	Z_t big.Int
-	Z_u big.Int
+	Z_k fr.Element
+	Z_t fr.Element
+	Z_u fr.Element
 }
 
 func Prove(
@@ -38,43 +37,40 @@ func Prove(
 	S group.Element,
 	T group.GroupCommitment,
 	U group.GroupCommitment,
-	k big.Int,
-	r_t big.Int,
-	r_u big.Int,
+	k fr.Element,
+	r_t fr.Element,
+	r_u fr.Element,
 	transcript *transcript.Transcript,
 	rand *common.Rand,
 ) (Proof, error) {
 	// TODO: 128 bytes random big.Int is arbitrary. It should be better defined,
 	// regarding the underlying group order. Should be fine for an experiment.
-	r_a, err := rand.GetFrBigInt()
+	r_a, err := rand.GetFr()
 	if err != nil {
 		return Proof{}, fmt.Errorf("get r_a: %s", err)
 	}
-	r_b, err := rand.GetFrBigInt()
+	r_b, err := rand.GetFr()
 	if err != nil {
 		return Proof{}, fmt.Errorf("get r_b: %s", err)
 	}
-	r_k, err := rand.GetFrBigInt()
+	r_k, err := rand.GetFr()
 	if err != nil {
 		return Proof{}, fmt.Errorf("get r_k: %s", err)
 	}
 	var bi_r_k = r_k // TODO: unnecessary, just to keep the the same names as the original code.
 
 	tmp := g.CreateElement()
-	A := group.NewGroupCommitment(g, crs.Gt, crs.H, tmp.ScalarMultiplication(R, &bi_r_k), &r_a)
-	B := group.NewGroupCommitment(g, crs.Gu, crs.H, tmp.ScalarMultiplication(S, &bi_r_k), &r_b)
+	A := group.NewGroupCommitment(g, crs.Gt, crs.H, tmp.ScalarMultiplication(R, bi_r_k), r_a)
+	B := group.NewGroupCommitment(g, crs.Gu, crs.H, tmp.ScalarMultiplication(S, bi_r_k), r_b)
 
 	transcript.AppendGroupElements(labelPoints, R, S, T.T_1, T.T_2, U.T_1, U.T_2, A.T_1, A.T_2, B.T_1, B.T_2)
 
-	alpha := transcript.GetAndAppendChallengeBigInt(labelAlpha)
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 
-	var z_k, z_t, z_u big.Int
+	var z_k, z_t, z_u fr.Element
 	z_k.Add(&r_k, z_k.Mul(&k, &alpha))
-	z_k.Mod(&z_k, fr.Modulus())
 	z_t.Add(&r_a, z_t.Mul(&r_t, &alpha))
-	z_t.Mod(&z_t, fr.Modulus())
 	z_u.Add(&r_b, z_u.Mul(&r_u, &alpha))
-	z_u.Mod(&z_u, fr.Modulus())
 
 	return Proof{
 		A:   A,
@@ -97,13 +93,12 @@ func Verify(
 	transcript *transcript.Transcript,
 ) bool {
 	transcript.AppendGroupElements(labelPoints, R, S, T.T_1, T.T_2, U.T_1, U.T_2, proof.A.T_1, proof.A.T_2, proof.B.T_1, proof.B.T_2)
-	alpha := transcript.GetAndAppendChallengeBigInt(labelAlpha)
-	alpha.Mod(&alpha, fr.Modulus())
+	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	tmp := g.CreateElement()
-	expected_1 := group.NewGroupCommitment(g, crs.Gt, crs.H, tmp.ScalarMultiplication(R, &proof.Z_k), &proof.Z_t)
-	expected_2 := group.NewGroupCommitment(g, crs.Gu, crs.H, tmp.ScalarMultiplication(S, &proof.Z_k), &proof.Z_u)
+	expected_1 := group.NewGroupCommitment(g, crs.Gt, crs.H, tmp.ScalarMultiplication(R, proof.Z_k), proof.Z_t)
+	expected_2 := group.NewGroupCommitment(g, crs.Gu, crs.H, tmp.ScalarMultiplication(S, proof.Z_k), proof.Z_u)
 
-	return proof.A.Add(T.Mul(&alpha)).Eq(expected_1) && proof.B.Add(U.Mul(&alpha)).Eq(expected_2)
+	return proof.A.Add(T.Mul(alpha)).Eq(expected_1) && proof.B.Add(U.Mul(alpha)).Eq(expected_2)
 }
 
 func (p *Proof) FromReader(r io.Reader) error {

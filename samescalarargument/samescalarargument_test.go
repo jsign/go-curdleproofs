@@ -64,16 +64,16 @@ func TestProveVerify(t *testing.T) {
 			S, err := config.genRandomGroupElement()
 			require.NoError(t, err)
 
-			k, err := rand.GetFrBigInt()
+			k, err := rand.GetFr()
 			require.NoError(t, err)
-			r_t, err := rand.GetFrBigInt()
+			r_t, err := rand.GetFr()
 			require.NoError(t, err)
-			r_u, err := rand.GetFrBigInt()
+			r_u, err := rand.GetFr()
 			require.NoError(t, err)
 
 			tmp := config.group.CreateElement()
-			T := group.NewGroupCommitment(config.group, crs.Gt, crs.H, tmp.ScalarMultiplication(R, &k), &r_t)
-			U := group.NewGroupCommitment(config.group, crs.Gu, crs.H, tmp.ScalarMultiplication(S, &k), &r_u)
+			T := group.NewGroupCommitment(config.group, crs.Gt, crs.H, tmp.ScalarMultiplication(R, k), r_t)
+			U := group.NewGroupCommitment(config.group, crs.Gu, crs.H, tmp.ScalarMultiplication(S, k), r_u)
 
 			now := time.Now()
 			proof, err := Prove(

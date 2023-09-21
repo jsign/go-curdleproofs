@@ -46,17 +46,6 @@ func (r *Rand) GetFr() (fr.Element, error) {
 	}
 }
 
-func (r *Rand) GetFrBigInt() (big.Int, error) {
-	var randElem fr.Element
-	if _, err := randElem.SetRandom(); err != nil {
-		return big.Int{}, fmt.Errorf("get random GT: %s", err)
-	}
-	var scalar big.Int
-	randElem.BigInt(&scalar)
-
-	return *randElem.BigInt(&scalar), nil
-}
-
 func (r *Rand) GetFrs(n int) ([]fr.Element, error) {
 	var err error
 	ret := make([]fr.Element, n)

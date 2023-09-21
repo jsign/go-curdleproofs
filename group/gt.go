@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 )
 
 type GroupGt struct {
@@ -24,9 +25,11 @@ func FromGt(gt bls12381.GT) Element {
 	}
 }
 
-func (z *GtElement) ScalarMultiplication(e Element, scalar *big.Int) Element {
+func (z *GtElement) ScalarMultiplication(e Element, scalar fr.Element) Element {
 	ee := e.(*GtElement).inner
-	z.inner.ExpGLV(ee, scalar)
+	var bi big.Int
+	scalar.BigInt(&bi)
+	z.inner.ExpGLV(ee, &bi)
 	return z
 }
 
