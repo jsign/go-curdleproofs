@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/group"
 	"github.com/jsign/curdleproofs/transcript"
@@ -45,15 +46,15 @@ func Prove(
 ) (Proof, error) {
 	// TODO: 128 bytes random big.Int is arbitrary. It should be better defined,
 	// regarding the underlying group order. Should be fine for an experiment.
-	r_a, err := rand.GetBigInt128()
+	r_a, err := rand.GetFrBigInt()
 	if err != nil {
 		return Proof{}, fmt.Errorf("get r_a: %s", err)
 	}
-	r_b, err := rand.GetBigInt128()
+	r_b, err := rand.GetFrBigInt()
 	if err != nil {
 		return Proof{}, fmt.Errorf("get r_b: %s", err)
 	}
-	r_k, err := rand.GetBigInt128()
+	r_k, err := rand.GetFrBigInt()
 	if err != nil {
 		return Proof{}, fmt.Errorf("get r_k: %s", err)
 	}
@@ -69,8 +70,11 @@ func Prove(
 
 	var z_k, z_t, z_u big.Int
 	z_k.Add(&r_k, z_k.Mul(&k, &alpha))
+	z_k.Mod(&z_k, fr.Modulus())
 	z_t.Add(&r_a, z_t.Mul(&r_t, &alpha))
+	z_t.Mod(&z_t, fr.Modulus())
 	z_u.Add(&r_b, z_u.Mul(&r_u, &alpha))
+	z_u.Mod(&z_u, fr.Modulus())
 
 	return Proof{
 		A:   A,
@@ -94,7 +98,7 @@ func Verify(
 ) bool {
 	transcript.AppendGroupElements(labelPoints, R, S, T.T_1, T.T_2, U.T_1, U.T_2, proof.A.T_1, proof.A.T_2, proof.B.T_1, proof.B.T_2)
 	alpha := transcript.GetAndAppendChallengeBigInt(labelAlpha)
-
+	alpha.Mod(&alpha, fr.Modulus())
 	tmp := g.CreateElement()
 	expected_1 := group.NewGroupCommitment(g, crs.Gt, crs.H, tmp.ScalarMultiplication(R, &proof.Z_k), &proof.Z_t)
 	expected_2 := group.NewGroupCommitment(g, crs.Gu, crs.H, tmp.ScalarMultiplication(S, &proof.Z_k), &proof.Z_u)
