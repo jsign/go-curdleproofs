@@ -1,10 +1,12 @@
 package group
 
 import (
+	"fmt"
 	"math/big"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/jsign/curdleproofs/common"
 )
 
 type GroupG1 struct {
@@ -43,6 +45,26 @@ func (z *G1Element) AddAssign(e Element) Element {
 	ee := e.(*G1Element).inner
 	z.inner.AddAssign(&ee)
 	return z
+}
+
+func (z *G1Element) Add(a, b Element) Element {
+	aa := a.(*G1Element).inner
+	bb := b.(*G1Element).inner
+	z.inner.Set(&aa)
+	z.inner.AddAssign(&bb)
+	return z
+}
+
+func (z *G1Element) MultiExp(base []Element, scalars []fr.Element) (Element, error) {
+	jacs := make([]bls12381.G1Jac, len(base))
+	for i := 0; i < len(base); i++ {
+		jacs[i] = base[i].(*G1Element).inner
+	}
+	affs := bls12381.BatchJacobianToAffineG1(jacs)
+	if _, err := z.inner.MultiExp(affs, scalars, common.MultiExpConf); err != nil {
+		return nil, fmt.Errorf("g1 multiexp: %s", err)
+	}
+	return z, nil
 }
 
 func (z *G1Element) Equal(e Element) bool {
