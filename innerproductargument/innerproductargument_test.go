@@ -1,7 +1,9 @@
 package innerproductargument
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -58,6 +60,7 @@ func TestInnerProductArgument(t *testing.T) {
 
 				rand, err := common.NewRand(42)
 				require.NoError(t, err)
+				start := time.Now()
 				proof, err = Prove(
 					config.group,
 					crs,
@@ -70,6 +73,7 @@ func TestInnerProductArgument(t *testing.T) {
 					rand,
 				)
 				require.NoError(t, err)
+				fmt.Printf("Prove for %s took %s\n", config.name, time.Since(start))
 			}
 
 			t.Run("completeness", func(t *testing.T) {
@@ -80,6 +84,7 @@ func TestInnerProductArgument(t *testing.T) {
 				rand, err := common.NewRand(43)
 				require.NoError(t, err)
 
+				startVerify := time.Now()
 				ok, err := Verify(
 					config.group,
 					proof,
@@ -95,9 +100,11 @@ func TestInnerProductArgument(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, ok)
 
+				startMsmAccumCheck := time.Now()
 				ok, err = msmAccumulator.Verify()
 				require.NoError(t, err)
 				require.True(t, ok)
+				fmt.Printf("Verify for %s took %s (%s+%s)\n", config.name, time.Since(startVerify), startMsmAccumCheck.Sub(startVerify), time.Since(startMsmAccumCheck))
 			})
 		})
 	}
