@@ -36,17 +36,17 @@ func TestInnerProductArgument(t *testing.T) {
 				return group.FromG1Jac(randG1Jac), nil
 			},
 		},
-		// {
-		// 	name:  "Gt",
-		// 	group: &group.GroupGt{},
-		// 	genRandomGroupElement: func() (group.Element, error) {
-		// 		randGt, err := rand.GetGt()
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		// 		return group.FromGt(randGt), nil
-		// 	},
-		// },
+		{
+			name:  "Gt",
+			group: &group.GroupGt{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randGt, err := rand.GetGt()
+				if err != nil {
+					return nil, err
+				}
+				return group.FromGt(randGt), nil
+			},
+		},
 	}
 	for _, config := range configs {
 		t.Run(config.name, func(t *testing.T) {
