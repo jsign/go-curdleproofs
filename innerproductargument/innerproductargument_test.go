@@ -140,8 +140,6 @@ func setup(t *testing.T, config testConfig, n int) (CRS, group.Element, group.El
 	crsGs_prime := make([]group.Element, n)
 	for i := range crsGs_prime {
 		crsGs_prime[i] = config.group.CreateElement()
-	}
-	for i := 0; i < n; i++ {
 		crsGs_prime[i].ScalarMultiplication(crsGs[i], us[i])
 	}
 	H, err := config.genRandomGroupElement(rand)

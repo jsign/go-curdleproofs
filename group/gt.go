@@ -47,9 +47,21 @@ func (z *GtElement) AddAssign(e Element) Element {
 	return z
 }
 
+func (z *GtElement) SubAssign(e Element) Element {
+	ee := e.(*GtElement).inner
+	z.inner.Div(&z.inner, &ee)
+	return z
+}
+
 func (z *GtElement) Add(a, b Element) Element {
 	z.Set(a)
 	z.AddAssign(b)
+	return z
+}
+
+func (z *GtElement) Sub(a, b Element) Element {
+	z.Set(a)
+	z.SubAssign(b)
 	return z
 }
 
