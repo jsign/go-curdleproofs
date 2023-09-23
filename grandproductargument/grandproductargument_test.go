@@ -1,7 +1,9 @@
 package grandproductargument
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -48,11 +50,10 @@ func TestCompletenessAndSoundess(t *testing.T) {
 		},
 	}
 
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
-
 	for _, config := range configs {
 		t.Run(config.name, func(t *testing.T) {
+			rand, err := common.NewRand(0)
+			require.NoError(t, err)
 
 			var proof Proof
 			{
@@ -93,6 +94,7 @@ func TestCompletenessAndSoundess(t *testing.T) {
 				require.NoError(t, err)
 				B.AddAssign(B_L).AddAssign(B_R)
 
+				start := time.Now()
 				proof, err = Prove(
 					config.group,
 					crs,
@@ -104,10 +106,12 @@ func TestCompletenessAndSoundess(t *testing.T) {
 					rand,
 				)
 				require.NoError(t, err)
+				fmt.Printf("Prove %s took %s\n", config.name, time.Since(start))
 			}
 
 			t.Run("completeness", func(t *testing.T) {
 				crs, Gsum, Hsum, B, result, transcriptVerifier, msmAccumulator := genVerifierParameters(t, config, n)
+				start := time.Now()
 				ok, err := Verify(
 					config.group,
 					proof,
@@ -124,9 +128,11 @@ func TestCompletenessAndSoundess(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, ok)
 
+				startMsmVerif := time.Now()
 				ok, err = msmAccumulator.Verify()
 				require.NoError(t, err)
 				require.True(t, ok)
+				fmt.Printf("Verify %s took %s (%s+%s)\n", config.name, time.Since(start), startMsmVerif.Sub(start), time.Since(startMsmVerif))
 			})
 
 			t.Run("soundness - wrong result", func(t *testing.T) {
