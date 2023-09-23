@@ -271,6 +271,13 @@ func Verify(
 	beta.Mul(&beta, &proof.c0)
 	scalars := append(s, beta)
 
+	AAAA := g.CreateElement()
+	if _, err := AAAA.MultiExp(GplusH, scalars); err != nil {
+		panic(err)
+	}
+	if !AAAA.Equal(AC1) {
+		panic("nope")
+	}
 	if err := msmAccumulator.AccumulateCheck(AC1, scalars, GplusH, rand); err != nil {
 		return false, fmt.Errorf("accumulate check 1: %s", err)
 	}

@@ -11,7 +11,9 @@ type GroupGt struct {
 }
 
 func (g *GroupGt) CreateElement() Element {
-	return &GtElement{}
+	res := &GtElement{}
+	res.inner.SetOne()
+	return res
 }
 
 // GtElement implements Elemen backed by a Gt element.
@@ -45,15 +47,27 @@ func (z *GtElement) AddAssign(e Element) Element {
 	return z
 }
 
+func (z *GtElement) SubAssign(e Element) Element {
+	ee := e.(*GtElement).inner
+	z.inner.Div(&z.inner, &ee)
+	return z
+}
+
 func (z *GtElement) Add(a, b Element) Element {
 	z.Set(a)
 	z.AddAssign(b)
 	return z
 }
 
+func (z *GtElement) Sub(a, b Element) Element {
+	z.Set(a)
+	z.SubAssign(b)
+	return z
+}
+
 func (z *GtElement) MultiExp(basis []Element, scalars []fr.Element) (Element, error) {
 	// Maybe quite naive; but it works. Prob could use some Pippenger algorithm?
-	z.inner = bls12381.GT{}
+	z.inner.SetOne()
 	for i := 0; i < len(basis); i++ {
 		var tmp GtElement
 		tmp.ScalarMultiplication(basis[i], scalars[i])

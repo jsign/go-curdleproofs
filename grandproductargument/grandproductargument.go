@@ -5,11 +5,10 @@ import (
 	"io"
 	"math/big"
 
-	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
+	"github.com/jsign/curdleproofs/group"
 	"github.com/jsign/curdleproofs/innerproductargument"
-	"github.com/jsign/curdleproofs/msmaccumulator"
 	"github.com/jsign/curdleproofs/transcript"
 )
 
@@ -21,15 +20,15 @@ func init() {
 }
 
 type Proof struct {
-	C        bls12381.G1Jac
+	C        group.Element
 	Rp       fr.Element
 	IPAProof innerproductargument.Proof
 }
 
 type CRS struct {
-	Gs []bls12381.G1Affine
-	Hs []bls12381.G1Affine
-	H  bls12381.G1Jac
+	Gs []group.Element
+	Hs []group.Element
+	H  group.Element
 }
 
 var (
@@ -40,8 +39,10 @@ var (
 )
 
 func Prove(
+	g group.Group,
+
 	crs CRS,
-	B bls12381.G1Jac,
+	B group.Element,
 	result fr.Element,
 	bs []fr.Element,
 	r_bs []fr.Element,
@@ -49,7 +50,7 @@ func Prove(
 	rand *common.Rand,
 ) (Proof, error) {
 	// Step 1.
-	transcript.AppendPoints(labelGprodStep1, B)
+	transcript.AppendGroupElements(labelGprodStep1, B)
 	transcript.AppendScalars(labelGprodStep1, result)
 	alpha := transcript.GetAndAppendChallenge(labelGrpodAlpha)
 
@@ -63,14 +64,14 @@ func Prove(
 	if err != nil {
 		return Proof{}, fmt.Errorf("generate R_Cs: %s", err)
 	}
-	var C, C_L, C_R bls12381.G1Jac
-	if _, err := C_L.MultiExp(crs.Gs, cs, common.MultiExpConf); err != nil {
+	C, C_L, C_R := g.CreateElement(), g.CreateElement(), g.CreateElement()
+	if _, err := C_L.MultiExp(crs.Gs, cs); err != nil {
 		return Proof{}, fmt.Errorf("compute C_L: %s", err)
 	}
-	if _, err := C_R.MultiExp(crs.Hs, r_cs, common.MultiExpConf); err != nil {
+	if _, err := C_R.MultiExp(crs.Hs, r_cs); err != nil {
 		return Proof{}, fmt.Errorf("compute C_R: %s", err)
 	}
-	C.Set(&C_L).AddAssign(&C_R)
+	C.Set(C_L).AddAssign(C_R)
 
 	r_b_plus_alpha := make([]fr.Element, len(r_bs))
 	for i := range r_b_plus_alpha {
@@ -81,7 +82,7 @@ func Prove(
 		return Proof{}, fmt.Errorf("compute r_p: %s", err)
 	}
 
-	transcript.AppendPoints(labelGprodStep2, C)
+	transcript.AppendGroupElements(labelGprodStep2, C)
 	transcript.AppendScalars(labelGprodStep2, r_p)
 	beta := transcript.GetAndAppendChallenge(labelGprodBeta)
 	if beta.IsZero() {
@@ -91,15 +92,17 @@ func Prove(
 	var betaInv fr.Element
 	betaInv.Inverse(&beta)
 
-	Gs_prime := make([]bls12381.G1Affine, len(crs.Gs))
+	Gs_prime := make([]group.Element, len(crs.Gs))
 	tmpBetaInv := betaInv
 	for i := range Gs_prime {
-		Gs_prime[i].ScalarMultiplication(&crs.Gs[i], common.FrToBigInt(&tmpBetaInv))
+		Gs_prime[i] = g.CreateElement()
+		Gs_prime[i].ScalarMultiplication(crs.Gs[i], tmpBetaInv)
 		tmpBetaInv.Mul(&tmpBetaInv, &betaInv)
 	}
-	Hs_prime := make([]bls12381.G1Affine, len(crs.Hs))
+	Hs_prime := make([]group.Element, len(crs.Hs))
 	for i := range Hs_prime {
-		Hs_prime[i].ScalarMultiplication(&crs.Hs[i], common.FrToBigInt(&tmpBetaInv))
+		Hs_prime[i] = g.CreateElement()
+		Hs_prime[i].ScalarMultiplication(crs.Hs[i], tmpBetaInv)
 	}
 	bs_prime := make([]fr.Element, len(crs.Gs))
 	tmpBeta := beta
@@ -128,20 +131,25 @@ func Prove(
 	for i := range alphaBetaExpPlus1 {
 		alphaBetaExpPlus1[i].Mul(&alpha, &betaExpLPlus1)
 	}
-	var D, D_L, D_R bls12381.G1Jac
-	if _, err := D_L.MultiExp(Gs_prime, betaPowers, common.MultiExpConf); err != nil {
+	D, D_L, D_R := g.CreateElement(), g.CreateElement(), g.CreateElement()
+	if _, err := D_L.MultiExp(Gs_prime, betaPowers); err != nil {
 		return Proof{}, fmt.Errorf("compute D_L: %s", err)
 	}
-	if _, err := D_R.MultiExp(Hs_prime, alphaBetaExpPlus1, common.MultiExpConf); err != nil {
+	if _, err := D_R.MultiExp(Hs_prime, alphaBetaExpPlus1); err != nil {
 		return Proof{}, fmt.Errorf("compute D_R: %s", err)
 	}
-	D.Set(&B).SubAssign(&D_L).AddAssign(&D_R)
+	D.Set(B).SubAssign(D_L).AddAssign(D_R)
 
 	// Step 4
-	Gs := make([]bls12381.G1Affine, len(crs.Gs)+len(crs.Hs))
-	copy(Gs, crs.Gs)
-	copy(Gs[len(crs.Gs):], crs.Hs)
-
+	Gs := make([]group.Element, len(crs.Gs)+len(crs.Hs))
+	for i := range crs.Gs {
+		Gs[i] = g.CreateElement()
+		Gs[i].Set(crs.Gs[i])
+	}
+	for i := range crs.Hs {
+		Gs[len(crs.Gs)+i] = g.CreateElement()
+		Gs[len(crs.Gs)+i].Set(crs.Hs[i])
+	}
 	Gs_prime = append(Gs_prime, Hs_prime...)
 
 	var z, z_L, z_R fr.Element
@@ -161,18 +169,18 @@ func Prove(
 	if !ipaC_D.Equal(&z) {
 		return Proof{}, fmt.Errorf("IPA(C, D) != z")
 	}
-	var msmG_cs bls12381.G1Jac
-	if _, err := msmG_cs.MultiExp(Gs, cs, common.MultiExpConf); err != nil {
+	msmG_cs := g.CreateElement()
+	if _, err := msmG_cs.MultiExp(Gs, cs); err != nil {
 		return Proof{}, fmt.Errorf("compute msm(G, c): %s", err)
 	}
-	if !msmG_cs.Equal(&C) {
+	if !msmG_cs.Equal(C) {
 		return Proof{}, fmt.Errorf("msm(G, c) != C")
 	}
-	var msmG_prime_ds bls12381.G1Jac
-	if _, err := msmG_prime_ds.MultiExp(Gs_prime, ds, common.MultiExpConf); err != nil {
+	msmG_prime_ds := g.CreateElement()
+	if _, err := msmG_prime_ds.MultiExp(Gs_prime, ds); err != nil {
 		return Proof{}, fmt.Errorf("compute msm(G', d): %s", err)
 	}
-	if !msmG_prime_ds.Equal(&D) {
+	if !msmG_prime_ds.Equal(D) {
 		return Proof{}, fmt.Errorf("msm(G', d) != D")
 	}
 
@@ -183,6 +191,7 @@ func Prove(
 	}
 
 	ipaProof, err := innerproductargument.Prove(
+		g,
 		crsIPA,
 		C,
 		D,
@@ -204,24 +213,26 @@ func Prove(
 }
 
 func Verify(
+	g group.Group,
+
 	proof Proof,
 	crs CRS,
-	Gsum bls12381.G1Affine,
-	Hsum bls12381.G1Affine,
-	B bls12381.G1Jac,
+	Gsum group.Element,
+	Hsum group.Element,
+	B group.Element,
 	result fr.Element,
 	numBlinders int,
 	transcript *transcript.Transcript,
-	msmAccumulator *msmaccumulator.MsmAccumulator,
+	msmAccumulator *group.MsmAccumulator,
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1
-	transcript.AppendPoints(labelGprodStep1, B)
+	transcript.AppendGroupElements(labelGprodStep1, B)
 	transcript.AppendScalars(labelGprodStep1, result)
 	alpha := transcript.GetAndAppendChallenge(labelGrpodAlpha)
 
 	// Step 2
-	transcript.AppendPoints(labelGprodStep2, proof.C)
+	transcript.AppendGroupElements(labelGprodStep2, proof.C)
 	transcript.AppendScalars(labelGprodStep2, proof.Rp)
 	beta := transcript.GetAndAppendChallenge(labelGprodBeta)
 	if beta.IsZero() {
@@ -240,15 +251,21 @@ func Verify(
 	for i := len(crs.Gs); i < len(us); i++ {
 		us[i] = betaInvPow
 	}
-	var D, D_M, D_R bls12381.G1Affine
-	D_M.ScalarMultiplication(&Gsum, common.FrToBigInt(&betaInv))
-	D_R.ScalarMultiplication(&Hsum, common.FrToBigInt(&alpha))
-	D.FromJacobian(&B).Sub(&D, &D_M).Add(&D, &D_R)
+	D, D_M, D_R := g.CreateElement(), g.CreateElement(), g.CreateElement()
+	D_M.ScalarMultiplication(Gsum, betaInv)
+	D_R.ScalarMultiplication(Hsum, alpha)
+	D.Set(B).Sub(D, D_M).Add(D, D_R)
 
 	// Step 4
-	Gs := make([]bls12381.G1Affine, len(crs.Gs)+len(crs.Hs))
-	copy(Gs, crs.Gs)
-	copy(Gs[len(crs.Gs):], crs.Hs)
+	Gs := make([]group.Element, len(crs.Gs)+len(crs.Hs))
+	for i := range crs.Gs {
+		Gs[i] = g.CreateElement()
+		Gs[i] = crs.Gs[i]
+	}
+	for i := range crs.Hs {
+		Gs[len(crs.Gs)+i] = g.CreateElement()
+		Gs[len(crs.Gs)+i] = crs.Hs[i]
+	}
 
 	var z, z_L, z_M fr.Element
 	var betaExpL, betaExpLPlusOne fr.Element
@@ -265,9 +282,10 @@ func Verify(
 		H: crs.H,
 	}
 
-	var DAffine bls12381.G1Jac
-	DAffine.FromAffine(&D) // TODO(jsign): despite doesn't require inversion, see if we can avoid this.
+	DAffine := g.CreateElement()
+	DAffine.Set(D)
 	ok, err := innerproductargument.Verify(
+		g,
 		proof.IPAProof,
 		ipaCRS,
 		proof.C,
@@ -286,33 +304,33 @@ func Verify(
 }
 
 func (p *Proof) FromReader(r io.Reader) error {
-	d := bls12381.NewDecoder(r)
-	var tmp bls12381.G1Affine
-	if err := d.Decode(&tmp); err != nil {
-		return fmt.Errorf("decode C: %s", err)
-	}
-	p.C.FromAffine(&tmp)
-	if err := d.Decode(&p.Rp); err != nil {
-		return fmt.Errorf("decode Rp: %s", err)
-	}
-	if err := p.IPAProof.FromReader(r); err != nil {
-		return fmt.Errorf("decode IPAProof: %s", err)
-	}
+	// d := bls12381.NewDecoder(r)
+	// var tmp bls12381.G1Affine
+	// if err := d.Decode(&tmp); err != nil {
+	// 	return fmt.Errorf("decode C: %s", err)
+	// }
+	// p.C.FromAffine(&tmp)
+	// if err := d.Decode(&p.Rp); err != nil {
+	// 	return fmt.Errorf("decode Rp: %s", err)
+	// }
+	// if err := p.IPAProof.FromReader(r); err != nil {
+	// 	return fmt.Errorf("decode IPAProof: %s", err)
+	// }
 	return nil
 }
 
 func (p *Proof) Serialize(w io.Writer) error {
-	var cAffine bls12381.G1Affine
-	cAffine.FromJacobian(&p.C)
-	e := bls12381.NewEncoder(w)
-	if err := e.Encode(&cAffine); err != nil {
-		return fmt.Errorf("encode C: %s", err)
-	}
-	if err := e.Encode(&p.Rp); err != nil {
-		return fmt.Errorf("encode Rp: %s", err)
-	}
-	if err := p.IPAProof.Serialize(w); err != nil {
-		return fmt.Errorf("encode IPAProof: %s", err)
-	}
+	// var cAffine bls12381.G1Affine
+	// cAffine.FromJacobian(&p.C)
+	// e := bls12381.NewEncoder(w)
+	// if err := e.Encode(&cAffine); err != nil {
+	// 	return fmt.Errorf("encode C: %s", err)
+	// }
+	// if err := e.Encode(&p.Rp); err != nil {
+	// 	return fmt.Errorf("encode Rp: %s", err)
+	// }
+	// if err := p.IPAProof.Serialize(w); err != nil {
+	// 	return fmt.Errorf("encode IPAProof: %s", err)
+	// }
 	return nil
 }
