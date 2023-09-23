@@ -1,6 +1,7 @@
 package curdleproof
 
 import (
+	"fmt"
 	"testing"
 
 	mrand "math/rand"
@@ -219,60 +220,126 @@ func TestCompleteness(t *testing.T) {
 // 	})
 // }
 
-// func BenchmarkProver(b *testing.B) {
-// 	rand, err := common.NewRand(42)
-// 	require.NoError(b, err)
+func BenchmarkProver(b *testing.B) {
+	configs := []testConfig{
+		{
+			name:  "G1",
+			group: &group.GroupG1{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randG1Aff, err := rand.GetG1Affine()
+				if err != nil {
+					return nil, err
+				}
+				var randG1Jac bls12381.G1Jac
+				randG1Jac.FromAffine(&randG1Aff)
+				return group.FromG1Jac(randG1Jac), nil
+			},
+		},
+		{
+			name:  "Gt",
+			group: &group.GroupGt{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randGt, err := rand.GetGt()
+				if err != nil {
+					return nil, err
+				}
+				return group.FromGt(randGt), nil
+			},
+		},
+	}
 
-// 	for _, n := range []int{64, 128, 256, 512} {
-// 		b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
-// 			crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, n)
-// 			b.ResetTimer()
-// 			for i := 0; i < b.N; i++ {
-// 				_, _ = Prove(
-// 					crs,
-// 					Rs,
-// 					Ss,
-// 					Ts,
-// 					Us,
-// 					M,
-// 					perm,
-// 					k,
-// 					rs_m,
-// 					rand,
-// 				)
-// 			}
-// 		})
-// 	}
-// }
+	for _, config := range configs {
+		b.Run(config.name, func(b *testing.B) {
+			rand, err := common.NewRand(42)
+			require.NoError(b, err)
 
-// func BenchmarkVerifier(b *testing.B) {
-// 	rand, err := common.NewRand(42)
-// 	require.NoError(b, err)
+			for _, n := range []int{64, 128, 256, 512} {
+				b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
+					crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, config, n)
 
-// 	for _, n := range []int{64, 128, 256, 512} {
-// 		b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
-// 			crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, n)
-// 			proof, err := Prove(
-// 				crs,
-// 				Rs,
-// 				Ss,
-// 				Ts,
-// 				Us,
-// 				M,
-// 				perm,
-// 				k,
-// 				rs_m,
-// 				rand,
-// 			)
-// 			require.NoError(b, err)
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						_, _ = Prove(
+							config.group,
+							crs,
+							Rs,
+							Ss,
+							Ts,
+							Us,
+							M,
+							perm,
+							k,
+							rs_m,
+							rand,
+						)
+					}
+				})
+			}
+		})
+	}
+}
 
-// 			b.ResetTimer()
-// 			for i := 0; i < b.N; i++ {
-// 				_, _ = Verify(proof, crs, Rs, Ss, Ts, Us, M, rand)
-// 			}
-// 		})
-// 	}
-// }
+func BenchmarkVerifier(b *testing.B) {
+	configs := []testConfig{
+		{
+			name:  "G1",
+			group: &group.GroupG1{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randG1Aff, err := rand.GetG1Affine()
+				if err != nil {
+					return nil, err
+				}
+				var randG1Jac bls12381.G1Jac
+				randG1Jac.FromAffine(&randG1Aff)
+				return group.FromG1Jac(randG1Jac), nil
+			},
+		},
+		{
+			name:  "Gt",
+			group: &group.GroupGt{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randGt, err := rand.GetGt()
+				if err != nil {
+					return nil, err
+				}
+				return group.FromGt(randGt), nil
+			},
+		},
+	}
+
+	for _, config := range configs {
+		b.Run(config.name, func(b *testing.B) {
+
+			rand, err := common.NewRand(42)
+			require.NoError(b, err)
+
+			for _, n := range []int{64, 128, 256, 512} {
+				b.Run(fmt.Sprintf("shuffled elements=%d", n-common.N_BLINDERS), func(b *testing.B) {
+					crs, Rs, Ss, Ts, Us, M, perm, k, rs_m := setup(b, config, n)
+					proof, err := Prove(
+						config.group,
+						crs,
+						Rs,
+						Ss,
+						Ts,
+						Us,
+						M,
+						perm,
+						k,
+						rs_m,
+						rand,
+					)
+					require.NoError(b, err)
+
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						_, _ = Verify(config.group, proof, crs, Rs, Ss, Ts, Us, M, rand)
+					}
+				})
+			}
+		})
+	}
+}
 
 func setup(t testing.TB, config testConfig, n int) (
 	CRS,
