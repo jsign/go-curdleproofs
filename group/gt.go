@@ -45,6 +45,23 @@ func (z *GtElement) AddAssign(e Element) Element {
 	return z
 }
 
+func (z *GtElement) Add(a, b Element) Element {
+	z.Set(a)
+	z.AddAssign(b)
+	return z
+}
+
+func (z *GtElement) MultiExp(basis []Element, scalars []fr.Element) (Element, error) {
+	// Maybe quite naive; but it works. Prob could use some Pippenger algorithm?
+	z.inner = bls12381.GT{}
+	for i := 0; i < len(basis); i++ {
+		var tmp GtElement
+		tmp.ScalarMultiplication(basis[i], scalars[i])
+		z.AddAssign(&tmp)
+	}
+	return z, nil
+}
+
 func (z *GtElement) Equal(e Element) bool {
 	ee := e.(*GtElement).inner
 	return z.inner.Equal(&ee)
