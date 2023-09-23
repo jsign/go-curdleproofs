@@ -3,6 +3,7 @@ package grandproductargument
 import (
 	"testing"
 
+	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/group"
@@ -21,19 +22,19 @@ func TestCompletenessAndSoundess(t *testing.T) {
 
 	n := 128
 	configs := []testConfig{
-		// {
-		// 	name:  "G1",
-		// 	group: &group.GroupG1{},
-		// 	genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
-		// 		randG1Aff, err := rand.GetG1Affine()
-		// 		if err != nil {
-		// 			return nil, err
-		// 		}
-		// 		var randG1Jac bls12381.G1Jac
-		// 		randG1Jac.FromAffine(&randG1Aff)
-		// 		return group.FromG1Jac(randG1Jac), nil
-		// 	},
-		// },
+		{
+			name:  "G1",
+			group: &group.GroupG1{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randG1Aff, err := rand.GetG1Affine()
+				if err != nil {
+					return nil, err
+				}
+				var randG1Jac bls12381.G1Jac
+				randG1Jac.FromAffine(&randG1Aff)
+				return group.FromG1Jac(randG1Jac), nil
+			},
+		},
 		{
 			name:  "Gt",
 			group: &group.GroupGt{},
