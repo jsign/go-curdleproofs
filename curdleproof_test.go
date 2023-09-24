@@ -1,6 +1,7 @@
 package curdleproof
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -84,141 +85,184 @@ func TestCompleteness(t *testing.T) {
 	}
 }
 
-// func TestSoundness(t *testing.T) {
-// 	t.Parallel()
+func TestSoundness(t *testing.T) {
+	t.Parallel()
 
-// 	n := 128
+	n := 128
 
-// 	rand, err := common.NewRand(0)
-// 	require.NoError(t, err)
+	configs := []testConfig{
+		{
+			name:  "G1",
+			group: &group.GroupG1{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randG1Aff, err := rand.GetG1Affine()
+				if err != nil {
+					return nil, err
+				}
+				var randG1Jac bls12381.G1Jac
+				randG1Jac.FromAffine(&randG1Aff)
+				return group.FromG1Jac(randG1Jac), nil
+			},
+		},
+		{
+			name:  "Gt",
+			group: &group.GroupGt{},
+			genRandomGroupElement: func(rand *common.Rand) (group.Element, error) {
+				randGt, err := rand.GetGt()
+				if err != nil {
+					return nil, err
+				}
+				return group.FromGt(randGt), nil
+			},
+		},
+	}
 
-// 	crs, err := GenerateCRS(n-common.N_BLINDERS, rand)
-// 	require.NoError(t, err)
+	for _, config := range configs {
+		t.Run(config.name, func(t *testing.T) {
 
-// 	perm := make([]uint32, n-common.N_BLINDERS)
-// 	for i := range perm {
-// 		perm[i] = uint32(i)
-// 	}
-// 	srand := mrand.New(mrand.NewSource(42))
-// 	srand.Shuffle(len(perm), func(i, j int) { perm[i], perm[j] = perm[j], perm[i] })
+			rand, err := common.NewRand(0)
+			require.NoError(t, err)
 
-// 	k, err := rand.GetFr()
-// 	require.NoError(t, err)
+			crs, err := GenerateCRS(n-common.N_BLINDERS, config.group, func() (group.Element, error) { return config.genRandomGroupElement(rand) })
+			require.NoError(t, err)
 
-// 	Rs, err := rand.GetG1Affines(n - common.N_BLINDERS)
-// 	require.NoError(t, err)
-// 	Ss, err := rand.GetG1Affines(n - common.N_BLINDERS)
-// 	require.NoError(t, err)
+			perm := make([]uint32, n-common.N_BLINDERS)
+			for i := range perm {
+				perm[i] = uint32(i)
+			}
+			srand := mrand.New(mrand.NewSource(42))
+			srand.Shuffle(len(perm), func(i, j int) { perm[i], perm[j] = perm[j], perm[i] })
 
-// 	Ts, Us, M, rs_m, err := common.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, perm, k, rand)
-// 	require.NoError(t, err)
+			k, err := rand.GetFr()
+			require.NoError(t, err)
 
-// 	// Prove.
-// 	rand, err = common.NewRand(0)
-// 	require.NoError(t, err)
-// 	proof, err := Prove(
-// 		crs,
-// 		Rs,
-// 		Ss,
-// 		Ts,
-// 		Us,
-// 		M,
-// 		perm,
-// 		k,
-// 		rs_m,
-// 		rand,
-// 	)
-// 	require.NoError(t, err)
+			Rs := make([]group.Element, n-common.N_BLINDERS)
+			for i := range Rs {
+				Rs[i], err = config.genRandomGroupElement(rand)
+				require.NoError(t, err)
+			}
 
-// 	anotherPerm := make([]uint32, n-common.N_BLINDERS)
-// 	for i := range anotherPerm {
-// 		anotherPerm[i] = uint32(i)
-// 	}
-// 	srand.Shuffle(len(anotherPerm), func(i, j int) { anotherPerm[i], anotherPerm[j] = anotherPerm[j], anotherPerm[i] })
+			Ss := make([]group.Element, n-common.N_BLINDERS)
+			for i := range Ss {
+				Ss[i], err = config.genRandomGroupElement(rand)
+				require.NoError(t, err)
+			}
 
-// 	t.Run("flips Ss and Rs", func(t *testing.T) {
-// 		ok, err := Verify(proof, crs, Ss, Rs, Ts, Us, M, rand)
-// 		require.NoError(t, err)
-// 		require.False(t, ok)
-// 	})
+			Ts, Us, M, rs_m, err := utils.ShufflePermuteCommit(config.group, crs.Gs, crs.Hs, Rs, Ss, perm, k, rand)
+			require.NoError(t, err)
 
-// 	t.Run("apply a different permutation than the one proved", func(t *testing.T) {
-// 		ok, err := Verify(
-// 			proof,
-// 			crs,
-// 			Rs,
-// 			Ss,
-// 			common.Permute(Ts, anotherPerm),
-// 			common.Permute(Us, anotherPerm),
-// 			M,
-// 			rand,
-// 		)
-// 		require.NoError(t, err)
-// 		require.False(t, ok)
-// 	})
+			// Prove.
+			rand, err = common.NewRand(0)
+			require.NoError(t, err)
+			proof, err := Prove(
+				config.group,
+				crs,
+				Rs,
+				Ss,
+				Ts,
+				Us,
+				M,
+				perm,
+				k,
+				rs_m,
+				rand,
+			)
+			require.NoError(t, err)
 
-// 	t.Run("provide wrong perm commitment", func(t *testing.T) {
-// 		biK := common.FrToBigInt(&k)
-// 		var touchedM bls12381.G1Jac
-// 		touchedM.ScalarMultiplication(&M, biK)
-// 		ok, err := Verify(
-// 			proof,
-// 			crs,
-// 			Rs,
-// 			Ss,
-// 			Ts,
-// 			Us,
-// 			touchedM,
-// 			rand,
-// 		)
-// 		require.NoError(t, err)
-// 		require.False(t, ok)
+			anotherPerm := make([]uint32, n-common.N_BLINDERS)
+			for i := range anotherPerm {
+				anotherPerm[i] = uint32(i)
+			}
+			srand.Shuffle(len(anotherPerm), func(i, j int) { anotherPerm[i], anotherPerm[j] = anotherPerm[j], anotherPerm[i] })
 
-// 	})
+			t.Run("flips Ss and Rs", func(t *testing.T) {
+				ok, err := Verify(config.group, proof, crs, Ss, Rs, Ts, Us, M, rand)
+				require.NoError(t, err)
+				require.False(t, ok)
+			})
 
-// 	t.Run("instance outputs use a different randomizer", func(t *testing.T) {
-// 		anotherK, err := rand.GetFr()
-// 		require.NoError(t, err)
-// 		biAnotherK := common.FrToBigInt(&anotherK)
+			t.Run("apply a different permutation than the one proved", func(t *testing.T) {
+				ok, err := Verify(
+					config.group,
+					proof,
+					crs,
+					Rs,
+					Ss,
+					common.Permute(Ts, anotherPerm),
+					common.Permute(Us, anotherPerm),
+					M,
+					rand,
+				)
+				require.NoError(t, err)
+				require.False(t, ok)
+			})
 
-// 		anotherTs := make([]bls12381.G1Affine, len(Rs))
-// 		for i := range Ts {
-// 			anotherTs[i].ScalarMultiplication(&Ts[i], biAnotherK)
-// 		}
+			t.Run("provide wrong perm commitment", func(t *testing.T) {
+				touchedM := config.group.CreateElement()
+				touchedM.ScalarMultiplication(M, k)
+				ok, err := Verify(
+					config.group,
+					proof,
+					crs,
+					Rs,
+					Ss,
+					Ts,
+					Us,
+					touchedM,
+					rand,
+				)
+				require.NoError(t, err)
+				require.False(t, ok)
 
-// 		anotherUs := make([]bls12381.G1Affine, len(Us))
-// 		for i := range Us {
-// 			anotherUs[i].ScalarMultiplication(&Us[i], biAnotherK)
-// 		}
-// 		ok, err := Verify(
-// 			proof,
-// 			crs,
-// 			Rs,
-// 			Ss,
-// 			anotherTs,
-// 			anotherUs,
-// 			M,
-// 			rand,
-// 		)
-// 		require.NoError(t, err)
-// 		require.False(t, ok)
+			})
 
-// 	})
+			t.Run("instance outputs use a different randomizer", func(t *testing.T) {
+				anotherK, err := rand.GetFr()
+				require.NoError(t, err)
 
-// 	t.Run("encode/decode", func(t *testing.T) {
-// 		buf := bytes.NewBuffer(nil)
-// 		require.NoError(t, proof.Serialize(buf))
-// 		expected := buf.Bytes()
+				anotherTs := make([]group.Element, len(Rs))
+				for i := range Ts {
+					anotherTs[i] = config.group.CreateElement()
+					anotherTs[i].ScalarMultiplication(Ts[i], anotherK)
+				}
 
-// 		var proof2 Proof
-// 		require.NoError(t, proof2.FromReader(buf))
+				anotherUs := make([]group.Element, len(Us))
+				for i := range Us {
+					anotherUs[i] = config.group.CreateElement()
+					anotherUs[i].ScalarMultiplication(Us[i], anotherK)
+				}
+				ok, err := Verify(
+					config.group,
+					proof,
+					crs,
+					Rs,
+					Ss,
+					anotherTs,
+					anotherUs,
+					M,
+					rand,
+				)
+				require.NoError(t, err)
+				require.False(t, ok)
 
-// 		buf2 := bytes.NewBuffer(nil)
-// 		require.NoError(t, proof2.Serialize(buf2))
+			})
 
-// 		require.Equal(t, expected, buf2.Bytes())
-// 	})
-// }
+			t.Run("encode/decode", func(t *testing.T) {
+				buf := bytes.NewBuffer(nil)
+				require.NoError(t, proof.Serialize(buf))
+				expected := buf.Bytes()
+
+				var proof2 Proof
+				require.NoError(t, proof2.FromReader(buf))
+
+				buf2 := bytes.NewBuffer(nil)
+				require.NoError(t, proof2.Serialize(buf2))
+
+				require.Equal(t, expected, buf2.Bytes())
+			})
+		})
+	}
+}
 
 func BenchmarkProver(b *testing.B) {
 	configs := []testConfig{
