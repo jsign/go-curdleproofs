@@ -104,26 +104,25 @@ func (ma *MsmAccumulator) AccumulateCheck(
 		return fmt.Errorf("x and v must have the same length")
 	}
 
-	// alpha, err :=  rand.GetFr()
-	// if err != nil {
-	// 	return fmt.Errorf("get random scalar: %s", err)
-	// }
-	var alpha fr.Element
+	alpha, err := rand.GetFr()
+	if err != nil {
+		return fmt.Errorf("get random scalar: %s", err)
+	}
 	alpha.SetOne()
 
-	// var tmp fr.Element
-	// outer:
+	var tmp fr.Element
+outer:
 	for i := 0; i < len(basis); i++ {
-		// tmp.Mul(&alpha, &scalar[i])
+		tmp.Mul(&alpha, &scalar[i])
 
-		// for j := range ma.baseScalarMap {
-		// 	if ma.baseScalarMap[j].basis.Equal(basis[i]) {
-		// 		var scalar fr.Element
-		// 		scalar.Add(&ma.baseScalarMap[j].scalar, &tmp)
-		// 		ma.baseScalarMap[j].scalar = scalar
-		// 		continue outer
-		// 	}
-		// }
+		for j := range ma.baseScalarMap {
+			if ma.baseScalarMap[j].basis.Equal(basis[i]) {
+				var scalar fr.Element
+				scalar.Add(&ma.baseScalarMap[j].scalar, &tmp)
+				ma.baseScalarMap[j].scalar = scalar
+				continue outer
+			}
+		}
 
 		var basisCoeff msmCoeff
 		basisCoeff.basis = ma.g.CreateElement()
@@ -131,8 +130,7 @@ func (ma *MsmAccumulator) AccumulateCheck(
 		basisCoeff.scalar = scalar[i]
 		ma.baseScalarMap = append(ma.baseScalarMap, basisCoeff)
 	}
-	// ma.A_c.AddAssign(C.ScalarMultiplication(C, alpha))
-	ma.A_c.AddAssign(C)
+	ma.A_c.AddAssign(C.ScalarMultiplication(C, alpha))
 
 	return nil
 }

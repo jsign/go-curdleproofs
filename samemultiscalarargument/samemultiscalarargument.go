@@ -204,13 +204,6 @@ func Verify(
 	}
 	p.Set(A_a).AddAssign(l).AddAssign(r)
 
-	tmpCheck := g.CreateElement()
-	if _, err := tmpCheck.MultiExp(G, xtimess); err != nil {
-		panic(err)
-	}
-	if !tmpCheck.Equal(p) {
-		panic("wrong")
-	}
 	if err := msmacc.AccumulateCheck(p, xtimess, G, rand); err != nil {
 		return false, fmt.Errorf("accumulating msm 1: %s", err)
 	}
