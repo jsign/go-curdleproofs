@@ -5,6 +5,7 @@ import (
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/jsign/curdleproofs/group"
 	transcript "github.com/jsign/merlin"
 )
 
@@ -26,6 +27,17 @@ func (t *Transcript) AppendPoints(label []byte, points ...bls12381.G1Jac) {
 	affs := bls12381.BatchJacobianToAffineG1(points)
 	for _, point := range affs {
 		t.AppendPointsAffine(label, point)
+	}
+}
+
+// TEMP: experimental.
+func (t *Transcript) AppendGroupElements(label []byte, points ...group.Element) {
+	for _, point := range points {
+		var bytes bytes.Buffer
+		affineBytes := point.Bytes()
+		bytes.Write(affineBytes[:])
+		t.appendMessage(label, bytes.Bytes())
+
 	}
 }
 

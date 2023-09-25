@@ -5,10 +5,9 @@ import (
 	"io"
 	"math/bits"
 
-	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
-	"github.com/jsign/curdleproofs/msmaccumulator"
+	"github.com/jsign/curdleproofs/group"
 	"github.com/jsign/curdleproofs/transcript"
 )
 
@@ -21,28 +20,30 @@ var (
 )
 
 type CRS struct {
-	Gs       []bls12381.G1Affine
-	Gs_prime []bls12381.G1Affine
-	H        bls12381.G1Jac
+	Gs       []group.Element
+	Gs_prime []group.Element
+	H        group.Element
 }
 
 type Proof struct {
-	B_c bls12381.G1Jac
-	B_d bls12381.G1Jac
+	B_c group.Element
+	B_d group.Element
 
-	L_Cs []bls12381.G1Jac
-	R_Cs []bls12381.G1Jac
-	L_Ds []bls12381.G1Jac
-	R_Ds []bls12381.G1Jac
+	L_Cs []group.Element
+	R_Cs []group.Element
+	L_Ds []group.Element
+	R_Ds []group.Element
 
 	c0 fr.Element
 	d0 fr.Element
 }
 
 func Prove(
+	g group.Group,
+
 	crs CRS,
-	C bls12381.G1Jac,
-	D bls12381.G1Jac,
+	C group.Element,
+	D group.Element,
 	z fr.Element,
 	cs []fr.Element,
 	ds []fr.Element,
@@ -62,18 +63,18 @@ func Prove(
 		return Proof{}, fmt.Errorf("generate IPA blinders: %s", err)
 	}
 
-	var B_c bls12381.G1Jac
-	if _, err := B_c.MultiExp(crs.Gs, rs_c, common.MultiExpConf); err != nil {
+	B_c := g.CreateElement()
+	if _, err := B_c.MultiExp(crs.Gs, rs_c); err != nil {
 		return Proof{}, fmt.Errorf("multiexp B_c: %s", err)
 	}
-	var B_d bls12381.G1Jac
-	if _, err := B_d.MultiExp(crs.Gs_prime, rs_d, common.MultiExpConf); err != nil {
+	B_d := g.CreateElement()
+	if _, err := B_d.MultiExp(crs.Gs_prime, rs_d); err != nil {
 		return Proof{}, fmt.Errorf("multiexp B_d: %s", err)
 	}
 
-	transcript.AppendPoints(labelStep1, C, D)
+	transcript.AppendGroupElements(labelStep1, C, D)
 	transcript.AppendScalars(labelStep1, z)
-	transcript.AppendPoints(labelStep1, B_c, B_d)
+	transcript.AppendGroupElements(labelStep1, B_c, B_d)
 
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
@@ -87,15 +88,15 @@ func Prove(
 		ds[i].Add(&rs_d[i], &tmp)
 	}
 
-	var H bls12381.G1Jac
-	H.ScalarMultiplication(&crs.H, common.FrToBigInt(&beta))
+	H := g.CreateElement()
+	H.ScalarMultiplication(crs.H, beta)
 
 	// Step 2.
 	m := bits.Len(n) - 1
-	L_Cs := make([]bls12381.G1Jac, 0, m)
-	R_Cs := make([]bls12381.G1Jac, 0, m)
-	L_Ds := make([]bls12381.G1Jac, 0, m)
-	R_Ds := make([]bls12381.G1Jac, 0, m)
+	L_Cs := make([]group.Element, 0, m)
+	R_Cs := make([]group.Element, 0, m)
+	L_Ds := make([]group.Element, 0, m)
+	R_Ds := make([]group.Element, 0, m)
 
 	for len(cs) > 1 {
 		n /= 2
@@ -105,37 +106,37 @@ func Prove(
 		G_L, G_R := common.SplitAt(crs.Gs, n)
 		G_prime_L, G_prime_R := common.SplitAt(crs.Gs_prime, n)
 
-		var L_C, L_C_L, L_C_R bls12381.G1Jac
-		if _, err := L_C_L.MultiExp(G_R, c_L, common.MultiExpConf); err != nil {
+		L_C, L_C_L, L_C_R := g.CreateElement(), g.CreateElement(), g.CreateElement()
+		if _, err := L_C_L.MultiExp(G_R, c_L); err != nil {
 			return Proof{}, fmt.Errorf("ipa L_C_1 multiexp: %s", err)
 		}
 		ipaCLDR, err := common.IPA(c_L, d_R)
 		if err != nil {
 			return Proof{}, fmt.Errorf("ipa L_C_2 multiexp: %s", err)
 		}
-		L_C_R.ScalarMultiplication(&H, common.FrToBigInt(&ipaCLDR))
-		L_C.Set(&L_C_L)
-		L_C.AddAssign(&L_C_R)
+		L_C_R.ScalarMultiplication(H, ipaCLDR)
+		L_C.Set(L_C_L)
+		L_C.AddAssign(L_C_R)
 
-		var L_D bls12381.G1Jac
-		if _, err := L_D.MultiExp(G_prime_L, d_R, common.MultiExpConf); err != nil {
+		L_D := g.CreateElement()
+		if _, err := L_D.MultiExp(G_prime_L, d_R); err != nil {
 			return Proof{}, fmt.Errorf("ipa L_D multiexp: %s", err)
 		}
 
-		var R_C, R_C_L, R_C_R bls12381.G1Jac
-		if _, err := R_C_L.MultiExp(G_L, c_R, common.MultiExpConf); err != nil {
+		R_C, R_C_L, R_C_R := g.CreateElement(), g.CreateElement(), g.CreateElement()
+		if _, err := R_C_L.MultiExp(G_L, c_R); err != nil {
 			return Proof{}, fmt.Errorf("ipa R_C_1 multiexp: %s", err)
 		}
 		ipaCRDL, err := common.IPA(c_R, d_L)
 		if err != nil {
 			return Proof{}, fmt.Errorf("ipa R_C_2 multiexp: %s", err)
 		}
-		R_C_R.ScalarMultiplication(&H, common.FrToBigInt(&ipaCRDL))
-		R_C.Set(&R_C_L)
-		R_C.AddAssign(&R_C_R)
+		R_C_R.ScalarMultiplication(H, ipaCRDL)
+		R_C.Set(R_C_L)
+		R_C.AddAssign(R_C_R)
 
-		var R_D bls12381.G1Jac
-		if _, err := R_D.MultiExp(G_prime_R, d_L, common.MultiExpConf); err != nil {
+		R_D := g.CreateElement()
+		if _, err := R_D.MultiExp(G_prime_R, d_L); err != nil {
 			return Proof{}, fmt.Errorf("ipa R_D multiexp: %s", err)
 		}
 
@@ -144,7 +145,7 @@ func Prove(
 		R_Cs = append(R_Cs, R_C)
 		R_Ds = append(R_Ds, R_D)
 
-		transcript.AppendPoints(labelLoop, L_C, L_D, R_C, R_D)
+		transcript.AppendGroupElements(labelLoop, L_C, L_D, R_C, R_D)
 		gamma := transcript.GetAndAppendChallenge(labelGamma)
 		if gamma.IsZero() {
 			return Proof{}, fmt.Errorf("ipa gamma challenge is zero")
@@ -157,12 +158,12 @@ func Prove(
 			c_L[i].Add(&c_L[i], tmps.Mul(&gamma_inv, &c_R[i]))
 			d_L[i].Add(&d_L[i], tmps.Mul(&gamma, &d_R[i]))
 
-			var tmpp bls12381.G1Affine
-			tmpp.ScalarMultiplication(&G_R[i], common.FrToBigInt(&gamma))
-			G_L[i].Add(&G_L[i], &tmpp)
+			tmpp := g.CreateElement()
+			tmpp.ScalarMultiplication(G_R[i], gamma)
+			G_L[i].Add(G_L[i], tmpp)
 
-			tmpp.ScalarMultiplication(&G_prime_R[i], common.FrToBigInt(&gamma_inv))
-			G_prime_L[i].Add(&G_prime_L[i], &tmpp)
+			tmpp.ScalarMultiplication(G_prime_R[i], gamma_inv)
+			G_prime_L[i].Add(G_prime_L[i], tmpp)
 		}
 
 		cs = c_L
@@ -188,20 +189,22 @@ func Prove(
 }
 
 func Verify(
+	g group.Group,
+
 	proof Proof,
 	crs CRS,
-	C bls12381.G1Jac,
-	D bls12381.G1Jac,
+	C group.Element,
+	D group.Element,
 	z fr.Element,
 	us []fr.Element,
 	transcript *transcript.Transcript,
-	msmAccumulator *msmaccumulator.MsmAccumulator,
+	msmAccumulator *group.MsmAccumulator,
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1.
-	transcript.AppendPoints(labelStep1, C, D)
+	transcript.AppendGroupElements(labelStep1, C, D)
 	transcript.AppendScalars(labelStep1, z)
-	transcript.AppendPoints(labelStep1, proof.B_c, proof.B_d)
+	transcript.AppendGroupElements(labelStep1, proof.B_c, proof.B_d)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
 
@@ -214,7 +217,7 @@ func Verify(
 
 	gamma := make([]fr.Element, 0, m)
 	for i := 0; i < m; i++ {
-		transcript.AppendPoints(labelLoop, proof.L_Cs[i], proof.L_Ds[i], proof.R_Cs[i], proof.R_Ds[i])
+		transcript.AppendGroupElements(labelLoop, proof.L_Cs[i], proof.L_Ds[i], proof.R_Cs[i], proof.R_Ds[i])
 		gamma = append(gamma, transcript.GetAndAppendChallenge(labelGamma))
 	}
 	gamma_inv := fr.BatchInvert(gamma)
@@ -234,31 +237,33 @@ func Verify(
 	}
 
 	// Accummulate check 1
-	var AC1, AC1_L, AC1_M_1, AC1_M_2, AC1_M_3, AC1_R bls12381.G1Jac
-	if _, err := AC1_L.MultiExp(bls12381.BatchJacobianToAffineG1(proof.L_Cs), gamma, common.MultiExpConf); err != nil {
+	AC1, AC1_L, AC1_M_1, AC1_M_2, AC1_M_3, AC1_R := g.CreateElement(), g.CreateElement(), g.CreateElement(), g.CreateElement(), g.CreateElement(), g.CreateElement()
+	if _, err := AC1_L.MultiExp(proof.L_Cs, gamma); err != nil {
 		return false, fmt.Errorf("ipa AC1_L multiexp: %s", err)
 	}
-	AC1_M_1.Set(&proof.B_c)
-	AC1_M_2.ScalarMultiplication(&C, common.FrToBigInt(&alpha))
+	AC1_M_1.Set(proof.B_c)
+	AC1_M_2.ScalarMultiplication(C, alpha)
 	var alphasquaredtimesz fr.Element
 	alphasquaredtimesz.Mul(&alpha, &alpha)
 	alphasquaredtimesz.Mul(&alphasquaredtimesz, &z)
-	var betaH bls12381.G1Jac
-	betaH.ScalarMultiplication(&crs.H, common.FrToBigInt(&beta))
-	AC1_M_3.ScalarMultiplication(&betaH, common.FrToBigInt(&alphasquaredtimesz))
-	if _, err := AC1_R.MultiExp(bls12381.BatchJacobianToAffineG1(proof.R_Cs), gamma_inv, common.MultiExpConf); err != nil {
+	betaH := g.CreateElement()
+	betaH.ScalarMultiplication(crs.H, beta)
+	AC1_M_3.ScalarMultiplication(betaH, alphasquaredtimesz)
+	if _, err := AC1_R.MultiExp(proof.R_Cs, gamma_inv); err != nil {
 		return false, fmt.Errorf("ipa AC1_R multiexp: %s", err)
 	}
-	AC1.Set(&AC1_L)
-	AC1.AddAssign(&AC1_M_1)
-	AC1.AddAssign(&AC1_M_2)
-	AC1.AddAssign(&AC1_M_3)
-	AC1.AddAssign(&AC1_R)
-	GplusH := make([]bls12381.G1Affine, len(crs.Gs)+1)
-	copy(GplusH, crs.Gs)
-	var HAffine bls12381.G1Affine
-	HAffine.FromJacobian(&crs.H)
-	GplusH[len(crs.Gs)].Set(&HAffine)
+	AC1.Set(AC1_L)
+	AC1.AddAssign(AC1_M_1)
+	AC1.AddAssign(AC1_M_2)
+	AC1.AddAssign(AC1_M_3)
+	AC1.AddAssign(AC1_R)
+	GplusH := make([]group.Element, len(crs.Gs)+1)
+	for i := range crs.Gs {
+		GplusH[i] = g.CreateElement()
+		GplusH[i].Set(crs.Gs[i])
+	}
+	GplusH[len(crs.Gs)] = g.CreateElement()
+	GplusH[len(crs.Gs)].Set(crs.H)
 	for i := range s {
 		s[i].Mul(&s[i], &proof.c0)
 	}
@@ -271,19 +276,19 @@ func Verify(
 	}
 
 	// Accummulate check 2
-	var AC2, AC2_L, AC2_M_1, AC2_M_2, AC2_R bls12381.G1Jac
-	if _, err := AC2_L.MultiExp(bls12381.BatchJacobianToAffineG1(proof.L_Ds), gamma, common.MultiExpConf); err != nil {
+	AC2, AC2_L, AC2_M_1, AC2_M_2, AC2_R := g.CreateElement(), g.CreateElement(), g.CreateElement(), g.CreateElement(), g.CreateElement()
+	if _, err := AC2_L.MultiExp(proof.L_Ds, gamma); err != nil {
 		return false, fmt.Errorf("multiexp: %s", err)
 	}
-	AC2_M_1.Set(&proof.B_d)
-	AC2_M_2.ScalarMultiplication(&D, common.FrToBigInt(&alpha))
-	if _, err := AC2_R.MultiExp(bls12381.BatchJacobianToAffineG1(proof.R_Ds), gamma_inv, common.MultiExpConf); err != nil {
+	AC2_M_1.Set(proof.B_d)
+	AC2_M_2.ScalarMultiplication(D, alpha)
+	if _, err := AC2_R.MultiExp(proof.R_Ds, gamma_inv); err != nil {
 		return false, fmt.Errorf("multiexp: %s", err)
 	}
-	AC2.Set(&AC2_L)
-	AC2.AddAssign(&AC2_M_1)
-	AC2.AddAssign(&AC2_M_2)
-	AC2.AddAssign(&AC2_R)
+	AC2.Set(AC2_L)
+	AC2.AddAssign(AC2_M_1)
+	AC2.AddAssign(AC2_M_2)
+	AC2.AddAssign(AC2_R)
 	scalars = s_prime
 	for i := range s_prime {
 		scalars[i].Mul(&scalars[i], &us[i])
@@ -391,70 +396,70 @@ func generateIPABlinders(rand *common.Rand, cs []fr.Element, ds []fr.Element) ([
 }
 
 func (p *Proof) FromReader(r io.Reader) error {
-	var tmp bls12381.G1Affine
-	d := bls12381.NewDecoder(r)
+	// var tmp bls12381.G1Affine
+	// d := bls12381.NewDecoder(r)
 
-	if err := d.Decode(&tmp); err != nil {
-		return fmt.Errorf("decode B_c: %s", err)
-	}
-	p.B_c.FromAffine(&tmp)
+	// if err := d.Decode(&tmp); err != nil {
+	// 	return fmt.Errorf("decode B_c: %s", err)
+	// }
+	// p.B_c.FromAffine(&tmp)
 
-	if err := d.Decode(&tmp); err != nil {
-		return fmt.Errorf("decode B_d: %s", err)
-	}
-	p.B_d.FromAffine(&tmp)
+	// if err := d.Decode(&tmp); err != nil {
+	// 	return fmt.Errorf("decode B_d: %s", err)
+	// }
+	// p.B_d.FromAffine(&tmp)
 
-	if err := common.DecodeAffineSliceToJac(d, &p.L_Cs); err != nil {
-		return fmt.Errorf("decode L_Cs: %s", err)
-	}
-	if err := common.DecodeAffineSliceToJac(d, &p.R_Cs); err != nil {
-		return fmt.Errorf("decode R_Cs: %s", err)
-	}
-	if err := common.DecodeAffineSliceToJac(d, &p.L_Ds); err != nil {
-		return fmt.Errorf("decode L_Ds: %s", err)
-	}
-	if err := common.DecodeAffineSliceToJac(d, &p.R_Ds); err != nil {
-		return fmt.Errorf("decode R_Ds: %s", err)
-	}
-	if err := d.Decode(&p.c0); err != nil {
-		return fmt.Errorf("decode c0: %s", err)
-	}
-	if err := d.Decode(&p.d0); err != nil {
-		return fmt.Errorf("decode d0: %s", err)
-	}
+	// if err := common.DecodeAffineSliceToJac(d, &p.L_Cs); err != nil {
+	// 	return fmt.Errorf("decode L_Cs: %s", err)
+	// }
+	// if err := common.DecodeAffineSliceToJac(d, &p.R_Cs); err != nil {
+	// 	return fmt.Errorf("decode R_Cs: %s", err)
+	// }
+	// if err := common.DecodeAffineSliceToJac(d, &p.L_Ds); err != nil {
+	// 	return fmt.Errorf("decode L_Ds: %s", err)
+	// }
+	// if err := common.DecodeAffineSliceToJac(d, &p.R_Ds); err != nil {
+	// 	return fmt.Errorf("decode R_Ds: %s", err)
+	// }
+	// if err := d.Decode(&p.c0); err != nil {
+	// 	return fmt.Errorf("decode c0: %s", err)
+	// }
+	// if err := d.Decode(&p.d0); err != nil {
+	// 	return fmt.Errorf("decode d0: %s", err)
+	// }
 	return nil
 }
 
 func (p *Proof) Serialize(w io.Writer) error {
-	b_cd := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{p.B_c, p.B_d})
-	e := bls12381.NewEncoder(w)
-	if err := e.Encode(&b_cd[0]); err != nil {
-		return fmt.Errorf("encode B_c: %s", err)
-	}
-	if err := e.Encode(&b_cd[1]); err != nil {
-		return fmt.Errorf("encode B_d: %s", err)
-	}
-	affL_Cs := bls12381.BatchJacobianToAffineG1(p.L_Cs)
-	if err := e.Encode(affL_Cs); err != nil {
-		return fmt.Errorf("encode L_Cs: %s", err)
-	}
-	affR_Cs := bls12381.BatchJacobianToAffineG1(p.R_Cs)
-	if err := e.Encode(affR_Cs); err != nil {
-		return fmt.Errorf("encode R_Cs: %s", err)
-	}
-	affL_Ds := bls12381.BatchJacobianToAffineG1(p.L_Ds)
-	if err := e.Encode(affL_Ds); err != nil {
-		return fmt.Errorf("encode L_Ds: %s", err)
-	}
-	affR_Ds := bls12381.BatchJacobianToAffineG1(p.R_Ds)
-	if err := e.Encode(affR_Ds); err != nil {
-		return fmt.Errorf("encode R_Ds: %s", err)
-	}
-	if err := e.Encode(&p.c0); err != nil {
-		return fmt.Errorf("encode c0: %s", err)
-	}
-	if err := e.Encode(&p.d0); err != nil {
-		return fmt.Errorf("encode d0: %s", err)
-	}
+	// b_cd := bls12381.BatchJacobianToAffineG1([]bls12381.G1Jac{p.B_c, p.B_d})
+	// e := bls12381.NewEncoder(w)
+	// if err := e.Encode(&b_cd[0]); err != nil {
+	// 	return fmt.Errorf("encode B_c: %s", err)
+	// }
+	// if err := e.Encode(&b_cd[1]); err != nil {
+	// 	return fmt.Errorf("encode B_d: %s", err)
+	// }
+	// affL_Cs := bls12381.BatchJacobianToAffineG1(p.L_Cs)
+	// if err := e.Encode(affL_Cs); err != nil {
+	// 	return fmt.Errorf("encode L_Cs: %s", err)
+	// }
+	// affR_Cs := bls12381.BatchJacobianToAffineG1(p.R_Cs)
+	// if err := e.Encode(affR_Cs); err != nil {
+	// 	return fmt.Errorf("encode R_Cs: %s", err)
+	// }
+	// affL_Ds := bls12381.BatchJacobianToAffineG1(p.L_Ds)
+	// if err := e.Encode(affL_Ds); err != nil {
+	// 	return fmt.Errorf("encode L_Ds: %s", err)
+	// }
+	// affR_Ds := bls12381.BatchJacobianToAffineG1(p.R_Ds)
+	// if err := e.Encode(affR_Ds); err != nil {
+	// 	return fmt.Errorf("encode R_Ds: %s", err)
+	// }
+	// if err := e.Encode(&p.c0); err != nil {
+	// 	return fmt.Errorf("encode c0: %s", err)
+	// }
+	// if err := e.Encode(&p.d0); err != nil {
+	// 	return fmt.Errorf("encode d0: %s", err)
+	// }
 	return nil
 }

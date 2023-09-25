@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/grandproductargument"
-	"github.com/jsign/curdleproofs/msmaccumulator"
+	"github.com/jsign/curdleproofs/group"
 	"github.com/jsign/curdleproofs/transcript"
 )
 
@@ -19,20 +18,22 @@ var (
 )
 
 type CRS struct {
-	Gs []bls12381.G1Affine
-	Hs []bls12381.G1Affine
-	H  bls12381.G1Jac
+	Gs []group.Element
+	Hs []group.Element
+	H  group.Element
 }
 
 type Proof struct {
-	B        bls12381.G1Jac
+	B        group.Element
 	gpaProof grandproductargument.Proof
 }
 
 func Prove(
+	g group.Group,
+
 	crs CRS,
-	A bls12381.G1Jac,
-	M bls12381.G1Jac,
+	A group.Element,
+	M group.Element,
 	as []fr.Element,
 	permutation []uint32,
 	rs_a []fr.Element,
@@ -41,7 +42,7 @@ func Prove(
 	rand *common.Rand,
 ) (Proof, error) {
 	// Step 1
-	transcript.AppendPoints(labelStep1, A, M)
+	transcript.AppendGroupElements(labelStep1, A, M)
 	transcript.AppendScalars(labelStep1, as...)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
@@ -63,14 +64,14 @@ func Prove(
 	for i := range betas {
 		betas[i] = beta
 	}
-	var msmBetasGs bls12381.G1Jac
-	if _, err := msmBetasGs.MultiExp(crs.Gs, betas, common.MultiExpConf); err != nil {
+	msmBetasGs := g.CreateElement()
+	if _, err := msmBetasGs.MultiExp(crs.Gs, betas); err != nil {
 		return Proof{}, fmt.Errorf("failed to compute msm(Bs, Gs): %s", err)
 	}
-	var alphaM bls12381.G1Jac
-	alphaM.ScalarMultiplication(&M, common.FrToBigInt(&alpha))
-	var B bls12381.G1Jac
-	B.Set(&A).AddAssign(&alphaM).AddAssign(&msmBetasGs)
+	alphaM := g.CreateElement()
+	alphaM.ScalarMultiplication(M, alpha)
+	B := g.CreateElement()
+	B.Set(A).AddAssign(alphaM).AddAssign(msmBetasGs)
 
 	rs_b := make([]fr.Element, len(rs_a))
 	for i := range rs_b {
@@ -78,6 +79,7 @@ func Prove(
 	}
 
 	gpaproof, err := grandproductargument.Prove(
+		g,
 		grandproductargument.CRS{
 			Gs: crs.Gs,
 			Hs: crs.Hs,
@@ -101,22 +103,24 @@ func Prove(
 }
 
 func Verify(
+	g group.Group,
+
 	proof Proof,
 	crs CRS,
-	Gsum bls12381.G1Affine,
-	Hsum bls12381.G1Affine,
-	A bls12381.G1Jac,
-	M bls12381.G1Jac,
+	Gsum group.Element,
+	Hsum group.Element,
+	A group.Element,
+	M group.Element,
 	as []fr.Element,
 	numBlinders int,
 	transcript *transcript.Transcript,
-	msmAccumulator *msmaccumulator.MsmAccumulator,
+	msmAccumulator *group.MsmAccumulator,
 
 	rand *common.Rand,
 ) (bool, error) {
 	// Step 1
 	// TODO(jsign): double check FS since doesn't seem to match paper.
-	transcript.AppendPoints(labelStep1, A, M)
+	transcript.AppendGroupElements(labelStep1, A, M)
 	transcript.AppendScalars(labelStep1, as...)
 	alpha := transcript.GetAndAppendChallenge(labelAlpha)
 	beta := transcript.GetAndAppendChallenge(labelBeta)
@@ -133,15 +137,16 @@ func Verify(
 	for i := range betas {
 		betas[i] = beta
 	}
-	var C bls12381.G1Jac
-	var alphaM bls12381.G1Jac
-	alphaM.ScalarMultiplication(&M, common.FrToBigInt(&alpha))
-	C.Set(&proof.B).SubAssign(&A).SubAssign(&alphaM)
+	C := g.CreateElement()
+	alphaM := g.CreateElement()
+	alphaM.ScalarMultiplication(M, alpha)
+	C.Set(proof.B).SubAssign(A).SubAssign(alphaM)
 	if err := msmAccumulator.AccumulateCheck(C, betas, crs.Gs, rand); err != nil {
 		return false, fmt.Errorf("failed to accumulate check: %s", err)
 	}
 
 	ok, err := grandproductargument.Verify(
+		g,
 		proof.gpaProof,
 		grandproductargument.CRS{
 			Gs: crs.Gs,
@@ -164,29 +169,29 @@ func Verify(
 }
 
 func (p *Proof) FromReader(r io.Reader) error {
-	var tmp bls12381.G1Affine
-	d := bls12381.NewDecoder(r)
+	// var tmp bls12381.G1Affine
+	// d := bls12381.NewDecoder(r)
 
-	if err := d.Decode(&tmp); err != nil {
-		return fmt.Errorf("failed to decode B: %s", err)
-	}
-	p.B.FromAffine(&tmp)
+	// if err := d.Decode(&tmp); err != nil {
+	// 	return fmt.Errorf("failed to decode B: %s", err)
+	// }
+	// p.B.FromAffine(&tmp)
 
-	if err := p.gpaProof.FromReader(r); err != nil {
-		return fmt.Errorf("failed to decode GPA proof: %s", err)
-	}
+	// if err := p.gpaProof.FromReader(r); err != nil {
+	// 	return fmt.Errorf("failed to decode GPA proof: %s", err)
+	// }
 	return nil
 }
 
 func (p *Proof) Serialize(w io.Writer) error {
-	e := bls12381.NewEncoder(w)
-	var bAffine bls12381.G1Affine
-	bAffine.FromJacobian(&p.B)
-	if err := e.Encode(&bAffine); err != nil {
-		return fmt.Errorf("failed to encode B: %s", err)
-	}
-	if err := p.gpaProof.Serialize(w); err != nil {
-		return fmt.Errorf("failed to encode GPA proof: %s", err)
-	}
+	// e := bls12381.NewEncoder(w)
+	// var bAffine bls12381.G1Affine
+	// bAffine.FromJacobian(&p.B)
+	// if err := e.Encode(&bAffine); err != nil {
+	// 	return fmt.Errorf("failed to encode B: %s", err)
+	// }
+	// if err := p.gpaProof.Serialize(w); err != nil {
+	// 	return fmt.Errorf("failed to encode GPA proof: %s", err)
+	// }
 	return nil
 }
