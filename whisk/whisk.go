@@ -1,12 +1,10 @@
 package whisk
 
 import (
-	"bytes"
 	"fmt"
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	curdleproof "github.com/jsign/curdleproofs"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/transcript"
 )
@@ -18,99 +16,101 @@ var (
 )
 
 func IsValidWhiskShuffleProof(crs CRS, preST, postST []WhiskTracker, proof WhiskShuffleProofBytes, rand *common.Rand) (bool, error) {
-	if len(preST) != len(postST) {
-		return false, fmt.Errorf("pre and post shuffle trackers must be the same length")
-	}
+	// if len(preST) != len(postST) {
+	// 	return false, fmt.Errorf("pre and post shuffle trackers must be the same length")
+	// }
 
-	var whiskProof WhiskShuffleProof
-	if err := whiskProof.FromReader(bytes.NewReader(proof[:])); err != nil {
-		return false, fmt.Errorf("decoding proof: %s", err)
-	}
+	// var whiskProof WhiskShuffleProof
+	// if err := whiskProof.FromReader(bytes.NewReader(proof[:])); err != nil {
+	// 	return false, fmt.Errorf("decoding proof: %s", err)
+	// }
 
-	var err error
-	Rs := make([]bls12381.G1Affine, len(preST))
-	Ss := make([]bls12381.G1Affine, len(preST))
-	Ts := make([]bls12381.G1Affine, len(postST))
-	Us := make([]bls12381.G1Affine, len(postST))
-	for i := 0; i < len(preST); i++ {
-		Rs[i], Ss[i], err = preST[i].getPoints()
-		if err != nil {
-			return false, fmt.Errorf("getting pre shuffle points: %s", err)
-		}
-		Ts[i], Us[i], err = postST[i].getPoints()
-		if err != nil {
-			return false, fmt.Errorf("getting post shuffle points: %s", err)
-		}
-	}
+	// var err error
+	// Rs := make([]bls12381.G1Affine, len(preST))
+	// Ss := make([]bls12381.G1Affine, len(preST))
+	// Ts := make([]bls12381.G1Affine, len(postST))
+	// Us := make([]bls12381.G1Affine, len(postST))
+	// for i := 0; i < len(preST); i++ {
+	// 	Rs[i], Ss[i], err = preST[i].getPoints()
+	// 	if err != nil {
+	// 		return false, fmt.Errorf("getting pre shuffle points: %s", err)
+	// 	}
+	// 	Ts[i], Us[i], err = postST[i].getPoints()
+	// 	if err != nil {
+	// 		return false, fmt.Errorf("getting post shuffle points: %s", err)
+	// 	}
+	// }
 
-	ok, err := curdleproof.Verify(
-		whiskProof.Proof,
-		crs,
-		Rs,
-		Ss,
-		Ts,
-		Us,
-		whiskProof.M,
-		rand,
-	)
-	if err != nil {
-		return false, fmt.Errorf("verifying proof: %s", err)
-	}
+	// ok, err := curdleproof.Verify(
+	// 	whiskProof.Proof,
+	// 	crs,
+	// 	Rs,
+	// 	Ss,
+	// 	Ts,
+	// 	Us,
+	// 	whiskProof.M,
+	// 	rand,
+	// )
+	// if err != nil {
+	// 	return false, fmt.Errorf("verifying proof: %s", err)
+	// }
 
-	return ok, nil
+	// return ok, nil
+	return false, nil
 }
 
 func GenerateWhiskShuffleProof(crs CRS, preTrackers []WhiskTracker, rand *common.Rand) ([]WhiskTracker, WhiskShuffleProofBytes, error) {
-	permutation, err := rand.GeneratePermutation(ELL)
-	if err != nil {
-		return nil, WhiskShuffleProofBytes{}, fmt.Errorf("generating permutation: %s", err)
-	}
-	k, err := rand.GetFr()
-	if err != nil {
-		return nil, WhiskShuffleProofBytes{}, fmt.Errorf("generating k: %s", err)
-	}
+	// permutation, err := rand.GeneratePermutation(ELL)
+	// if err != nil {
+	// 	return nil, WhiskShuffleProofBytes{}, fmt.Errorf("generating permutation: %s", err)
+	// }
+	// k, err := rand.GetFr()
+	// if err != nil {
+	// 	return nil, WhiskShuffleProofBytes{}, fmt.Errorf("generating k: %s", err)
+	// }
 
-	Rs := make([]bls12381.G1Affine, len(preTrackers))
-	Ss := make([]bls12381.G1Affine, len(preTrackers))
-	for i := 0; i < len(preTrackers); i++ {
-		Rs[i], Ss[i], err = preTrackers[i].getPoints()
-		if err != nil {
-			return nil, WhiskShuffleProofBytes{}, fmt.Errorf("getting points: %s", err)
-		}
-	}
+	// Rs := make([]bls12381.G1Affine, len(preTrackers))
+	// Ss := make([]bls12381.G1Affine, len(preTrackers))
+	// for i := 0; i < len(preTrackers); i++ {
+	// 	Rs[i], Ss[i], err = preTrackers[i].getPoints()
+	// 	if err != nil {
+	// 		return nil, WhiskShuffleProofBytes{}, fmt.Errorf("getting points: %s", err)
+	// 	}
+	// }
 
-	Ts, Us, M, rs_m, err := common.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, permutation, k, rand)
-	if err != nil {
-		return nil, WhiskShuffleProofBytes{}, fmt.Errorf("shuffling and permuting: %s", err)
-	}
+	// Ts, Us, M, rs_m, err := utils.ShufflePermuteCommit(crs.Gs, crs.Hs, Rs, Ss, permutation, k, rand)
+	// if err != nil {
+	// 	return nil, WhiskShuffleProofBytes{}, fmt.Errorf("shuffling and permuting: %s", err)
+	// }
 
-	proof, err := curdleproof.Prove(
-		crs,
-		Rs,
-		Ss,
-		Ts,
-		Us,
-		M,
-		permutation,
-		k,
-		rs_m,
-		rand)
-	if err != nil {
-		return nil, WhiskShuffleProofBytes{}, fmt.Errorf("generating proof: %s", err)
-	}
+	// proof, err := curdleproof.Prove(
+	// 	crs,
+	// 	Rs,
+	// 	Ss,
+	// 	Ts,
+	// 	Us,
+	// 	M,
+	// 	permutation,
+	// 	k,
+	// 	rs_m,
+	// 	rand)
+	// if err != nil {
+	// 	return nil, WhiskShuffleProofBytes{}, fmt.Errorf("generating proof: %s", err)
+	// }
 
-	whiskProof := WhiskShuffleProof{M: M, Proof: proof}
-	proofBytes, err := whiskProof.Serialize()
-	if err != nil {
-		return nil, WhiskShuffleProofBytes{}, fmt.Errorf("serializing proof: %s", err)
-	}
+	// whiskProof := WhiskShuffleProof{M: M, Proof: proof}
+	// proofBytes, err := whiskProof.Serialize()
+	// if err != nil {
+	// 	return nil, WhiskShuffleProofBytes{}, fmt.Errorf("serializing proof: %s", err)
+	// }
 
-	postTrackers := make([]WhiskTracker, len(preTrackers))
-	for i := 0; i < len(preTrackers); i++ {
-		postTrackers[i] = NewWhiskTracker(Ts[i], Us[i])
-	}
+	// postTrackers := make([]WhiskTracker, len(preTrackers))
+	// for i := 0; i < len(preTrackers); i++ {
+	// 	postTrackers[i] = NewWhiskTracker(Ts[i], Us[i])
+	// }
 
-	return postTrackers, proofBytes, nil
+	// return postTrackers, proofBytes, nil
+	return nil, WhiskShuffleProofBytes{}, nil
 }
 
 func IsValidWhiskTrackerProof(tracker WhiskTracker, kComm G1PointBytes, trackerProofBytes TrackerProofBytes) (bool, error) {

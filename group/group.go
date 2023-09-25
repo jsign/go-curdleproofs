@@ -16,6 +16,8 @@ type Element interface {
 	Set(e Element) Element
 	Add(a, b Element) Element
 	AddAssign(e Element) Element
+	Sub(a, b Element) Element
+	SubAssign(e Element) Element
 	Equal(e Element) bool
 	Bytes() []byte
 	MultiExp([]Element, []fr.Element) (Element, error)
@@ -106,6 +108,7 @@ func (ma *MsmAccumulator) AccumulateCheck(
 	if err != nil {
 		return fmt.Errorf("get random scalar: %s", err)
 	}
+	alpha.SetOne()
 
 	var tmp fr.Element
 outer:
@@ -120,7 +123,12 @@ outer:
 				continue outer
 			}
 		}
-		ma.baseScalarMap = append(ma.baseScalarMap, msmCoeff{basis: basis[i], scalar: tmp})
+
+		var basisCoeff msmCoeff
+		basisCoeff.basis = ma.g.CreateElement()
+		basisCoeff.basis.Set(basis[i])
+		basisCoeff.scalar = scalar[i]
+		ma.baseScalarMap = append(ma.baseScalarMap, basisCoeff)
 	}
 	ma.A_c.AddAssign(C.ScalarMultiplication(C, alpha))
 

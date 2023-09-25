@@ -114,8 +114,17 @@ func (r *Rand) GeneratePermutation(n int) ([]uint32, error) {
 
 // Experimental
 func (r *Rand) GetGt() (bls12381.GT, error) {
+	var byts [48 * 12]byte
+	for i := 0; i < 6; i++ {
+		a, err := r.GetG1Affine()
+		if err != nil {
+			return bls12381.GT{}, nil
+		}
+		abytes := a.RawBytes()
+		copy(byts[i*(48*2):], abytes[:])
+	}
 	var randElem bls12381.GT
-	if _, err := randElem.SetRandom(); err != nil {
+	if err := randElem.SetBytes(byts[:]); err != nil {
 		return bls12381.GT{}, fmt.Errorf("get random GT: %s", err)
 	}
 

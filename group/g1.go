@@ -47,11 +47,25 @@ func (z *G1Element) AddAssign(e Element) Element {
 	return z
 }
 
+func (z *G1Element) SubAssign(e Element) Element {
+	ee := e.(*G1Element).inner
+	z.inner.SubAssign(&ee)
+	return z
+}
+
 func (z *G1Element) Add(a, b Element) Element {
 	aa := a.(*G1Element).inner
 	bb := b.(*G1Element).inner
 	z.inner.Set(&aa)
 	z.inner.AddAssign(&bb)
+	return z
+}
+
+func (z *G1Element) Sub(a, b Element) Element {
+	aa := a.(*G1Element).inner
+	bb := b.(*G1Element).inner
+	z.inner.Set(&aa)
+	z.inner.SubAssign(&bb)
 	return z
 }
 

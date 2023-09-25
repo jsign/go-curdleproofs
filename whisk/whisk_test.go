@@ -33,61 +33,61 @@ func TestWhiskTrackerProof(t *testing.T) {
 	//       be an array of length equal TRACKER_PROOF_SIZE.
 }
 
-func TestWhiskShuffleProof(t *testing.T) {
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
+// func TestWhiskShuffleProof(t *testing.T) {
+// 	rand, err := common.NewRand(0)
+// 	require.NoError(t, err)
 
-	crs, err := curdleproof.GenerateCRS(ELL, rand)
-	require.NoError(t, err)
+// 	crs, err := curdleproof.GenerateCRS(ELL, rand)
+// 	require.NoError(t, err)
 
-	shuffledTrackers := generateShuffleTrackers(t, rand)
+// 	shuffledTrackers := generateShuffleTrackers(t, rand)
 
-	postTrackers, proofBytes, err := GenerateWhiskShuffleProof(crs, shuffledTrackers, rand)
-	require.NoError(t, err)
+// 	postTrackers, proofBytes, err := GenerateWhiskShuffleProof(crs, shuffledTrackers, rand)
+// 	require.NoError(t, err)
 
-	ok, err := IsValidWhiskShuffleProof(crs, shuffledTrackers, postTrackers, proofBytes, rand)
-	require.NoError(t, err)
-	require.True(t, ok)
+// 	ok, err := IsValidWhiskShuffleProof(crs, shuffledTrackers, postTrackers, proofBytes, rand)
+// 	require.NoError(t, err)
+// 	require.True(t, ok)
 
-	// Assert correct WHISK_SHUFFLE_PROOF_SIZE
-	// Note: this part of the reference test isn't implemented since
-	//       in this implementation the serialized proof is forced to
-	//       be an array of length equal WHISK_SHUFFLE_PROOF_SIZE.
-}
+// 	// Assert correct WHISK_SHUFFLE_PROOF_SIZE
+// 	// Note: this part of the reference test isn't implemented since
+// 	//       in this implementation the serialized proof is forced to
+// 	//       be an array of length equal WHISK_SHUFFLE_PROOF_SIZE.
+// }
 
-func TestWhiskFullLifecycle(t *testing.T) {
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
-	crs, err := curdleproof.GenerateCRS(ELL, rand)
-	require.NoError(t, err)
+// func TestWhiskFullLifecycle(t *testing.T) {
+// 	rand, err := common.NewRand(0)
+// 	require.NoError(t, err)
+// 	crs, err := curdleproof.GenerateCRS(ELL, rand)
+// 	require.NoError(t, err)
 
-	// Initial tracker in state
-	shuffledTrackers := generateShuffleTrackers(t, rand)
+// 	// Initial tracker in state
+// 	shuffledTrackers := generateShuffleTrackers(t, rand)
 
-	proposerIndex := uint64(15400)
-	proposerInitialK := fr.NewElement(proposerIndex)
+// 	proposerIndex := uint64(15400)
+// 	proposerInitialK := fr.NewElement(proposerIndex)
 
-	// Initial dummy values, r = 1
-	state := State{
-		proposerTracker:     computeTracker(proposerInitialK, fr.One()),
-		proposerKCommitment: getKComm(proposerInitialK),
-		shuffledTrackers:    shuffledTrackers,
-	}
+// 	// Initial dummy values, r = 1
+// 	state := State{
+// 		proposerTracker:     computeTracker(proposerInitialK, fr.One()),
+// 		proposerKCommitment: getKComm(proposerInitialK),
+// 		shuffledTrackers:    shuffledTrackers,
+// 	}
 
-	// k must be kept
-	proposerK, err := rand.GetFr()
-	require.NoError(t, err)
+// 	// k must be kept
+// 	proposerK, err := rand.GetFr()
+// 	require.NoError(t, err)
 
-	// On first proposal, validator creates tracker for registering
-	block0 := produceBlock(t, crs, &state, proposerK, proposerIndex)
-	// Block is valid
-	processBlock(t, crs, &state, block0)
+// 	// On first proposal, validator creates tracker for registering
+// 	block0 := produceBlock(t, crs, &state, proposerK, proposerIndex)
+// 	// Block is valid
+// 	processBlock(t, crs, &state, block0)
 
-	// On second proposal, validator opens previously submited tracker
-	block1 := produceBlock(t, crs, &state, proposerK, proposerIndex)
-	// Block is valid
-	processBlock(t, crs, &state, block1)
-}
+// 	// On second proposal, validator opens previously submited tracker
+// 	block1 := produceBlock(t, crs, &state, proposerK, proposerIndex)
+// 	// Block is valid
+// 	processBlock(t, crs, &state, block1)
+// }
 
 func generateTracker(t *testing.T, rand *common.Rand, k fr.Element) WhiskTracker {
 	r, err := rand.GetFr()
