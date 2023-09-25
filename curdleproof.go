@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/jsign/curdleproofs/group"
@@ -19,8 +18,8 @@ var (
 	labelStep1      = []byte("curdleproofs_step1")
 	labelVecA       = []byte("curdleproofs_vec_a")
 
-	zeroPoint = bls12381.G1Affine{}
-	zeroFr    = fr.Element{}
+	// zeroPoint = bls12381.G1Affine{}
+	zeroFr = fr.Element{}
 )
 
 type Proof struct {

@@ -5,7 +5,6 @@ import (
 
 	bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	curdleproof "github.com/jsign/curdleproofs"
 	"github.com/jsign/curdleproofs/common"
 	"github.com/stretchr/testify/require"
 )
@@ -108,102 +107,102 @@ func getKComm(k fr.Element) G1PointBytes {
 	return res.ScalarMultiplication(&g1Gen, common.FrToBigInt(&k)).Bytes()
 }
 
-func generateShuffleTrackers(t *testing.T, rand *common.Rand) []WhiskTracker {
-	wts := make([]WhiskTracker, ELL)
-	for i := 0; i < ELL; i++ {
-		k, err := rand.GetFr()
-		require.NoError(t, err)
-		wts[i] = generateTracker(t, rand, k)
-	}
-	return wts
-}
+// func generateShuffleTrackers(t *testing.T, rand *common.Rand) []WhiskTracker {
+// 	wts := make([]WhiskTracker, ELL)
+// 	for i := 0; i < ELL; i++ {
+// 		k, err := rand.GetFr()
+// 		require.NoError(t, err)
+// 		wts[i] = generateTracker(t, rand, k)
+// 	}
+// 	return wts
+// }
 
-// Construct the CRS
-type Block struct {
-	whiskOpeningProof        TrackerProofBytes
-	whiskPostShuffleTrackers []WhiskTracker
-	whiskShuffleProof        WhiskShuffleProofBytes
-	whiskRegistrationProof   TrackerProofBytes
-	whiskTracker             WhiskTracker
-	whiskKCommitment         G1PointBytes
-}
+// // Construct the CRS
+// type Block struct {
+// 	whiskOpeningProof        TrackerProofBytes
+// 	whiskPostShuffleTrackers []WhiskTracker
+// 	whiskShuffleProof        WhiskShuffleProofBytes
+// 	whiskRegistrationProof   TrackerProofBytes
+// 	whiskTracker             WhiskTracker
+// 	whiskKCommitment         G1PointBytes
+// }
 
-type State struct {
-	proposerTracker     WhiskTracker
-	proposerKCommitment G1PointBytes
-	shuffledTrackers    []WhiskTracker
-}
+// type State struct {
+// 	proposerTracker     WhiskTracker
+// 	proposerKCommitment G1PointBytes
+// 	shuffledTrackers    []WhiskTracker
+// }
 
-func processBlock(t *testing.T, crs curdleproof.CRS, state *State, block *Block) {
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
+// func processBlock(t *testing.T, crs curdleproof.CRS, state *State, block *Block) {
+// 	rand, err := common.NewRand(0)
+// 	require.NoError(t, err)
 
-	// process_whisk_opening_proof
-	ok, err := IsValidWhiskTrackerProof(state.proposerTracker, state.proposerKCommitment, block.whiskOpeningProof)
-	require.NoError(t, err)
-	require.True(t, ok)
+// 	// process_whisk_opening_proof
+// 	ok, err := IsValidWhiskTrackerProof(state.proposerTracker, state.proposerKCommitment, block.whiskOpeningProof)
+// 	require.NoError(t, err)
+// 	require.True(t, ok)
 
-	// whisk_process_shuffled_trackers
-	ok, err = IsValidWhiskShuffleProof(crs, state.shuffledTrackers, block.whiskPostShuffleTrackers, block.whiskShuffleProof, rand)
-	require.NoError(t, err)
-	require.True(t, ok)
+// 	// whisk_process_shuffled_trackers
+// 	ok, err = IsValidWhiskShuffleProof(crs, state.shuffledTrackers, block.whiskPostShuffleTrackers, block.whiskShuffleProof, rand)
+// 	require.NoError(t, err)
+// 	require.True(t, ok)
 
-	// whisk_process_tracker_registration
-	g1GenBytes := g1Gen.Bytes()
-	if state.proposerTracker.rG == g1GenBytes {
-		// First proposal
-		ok, err := IsValidWhiskTrackerProof(block.whiskTracker, block.whiskKCommitment, block.whiskRegistrationProof)
-		require.NoError(t, err)
-		require.True(t, ok)
-		state.proposerTracker = block.whiskTracker
-		state.proposerKCommitment = block.whiskKCommitment
-	}
-	// `else` -> Next proposals, registration data not used
-}
+// 	// whisk_process_tracker_registration
+// 	g1GenBytes := g1Gen.Bytes()
+// 	if state.proposerTracker.rG == g1GenBytes {
+// 		// First proposal
+// 		ok, err := IsValidWhiskTrackerProof(block.whiskTracker, block.whiskKCommitment, block.whiskRegistrationProof)
+// 		require.NoError(t, err)
+// 		require.True(t, ok)
+// 		state.proposerTracker = block.whiskTracker
+// 		state.proposerKCommitment = block.whiskKCommitment
+// 	}
+// 	// `else` -> Next proposals, registration data not used
+// }
 
-func produceBlock(t *testing.T, crs curdleproof.CRS, state *State, proposerK fr.Element, proposerIndex uint64) *Block {
-	rand, err := common.NewRand(0)
-	require.NoError(t, err)
+// func produceBlock(t *testing.T, crs curdleproof.CRS, state *State, proposerK fr.Element, proposerIndex uint64) *Block {
+// 	rand, err := common.NewRand(0)
+// 	require.NoError(t, err)
 
-	whiskPostShuffleTrackers, whiskShuffleProof, err := GenerateWhiskShuffleProof(crs, state.shuffledTrackers, rand)
-	require.NoError(t, err)
+// 	whiskPostShuffleTrackers, whiskShuffleProof, err := GenerateWhiskShuffleProof(crs, state.shuffledTrackers, rand)
+// 	require.NoError(t, err)
 
-	g1GenBytes := g1Gen.Bytes()
-	isFirstProposal := state.proposerTracker.rG == g1GenBytes
+// 	g1GenBytes := g1Gen.Bytes()
+// 	isFirstProposal := state.proposerTracker.rG == g1GenBytes
 
-	var whiskTracker WhiskTracker
-	var whiskRegistrationProof TrackerProofBytes
-	var whiskKCommitment G1PointBytes
-	if isFirstProposal {
-		// First proposal, validator creates tracker for registering
-		whiskTracker = generateTracker(t, rand, proposerK)
-		whiskKCommitment = getKComm(proposerK)
-		whiskRegistrationProof, err = GenerateWhiskTrackerProof(whiskTracker, proposerK, rand)
-		require.NoError(t, err)
-	} else {
-		// And subsequent proposals leave registration fields empty
-		whiskTracker = computeTracker(fr.One(), fr.One())
-		whiskKCommitment = getKComm(fr.One())
-	}
+// 	var whiskTracker WhiskTracker
+// 	var whiskRegistrationProof TrackerProofBytes
+// 	var whiskKCommitment G1PointBytes
+// 	if isFirstProposal {
+// 		// First proposal, validator creates tracker for registering
+// 		whiskTracker = generateTracker(t, rand, proposerK)
+// 		whiskKCommitment = getKComm(proposerK)
+// 		whiskRegistrationProof, err = GenerateWhiskTrackerProof(whiskTracker, proposerK, rand)
+// 		require.NoError(t, err)
+// 	} else {
+// 		// And subsequent proposals leave registration fields empty
+// 		whiskTracker = computeTracker(fr.One(), fr.One())
+// 		whiskKCommitment = getKComm(fr.One())
+// 	}
 
-	var kPrevProposal fr.Element
-	if isFirstProposal {
-		// On first proposal the k is computed deterministically and known to all
-		kPrevProposal = fr.NewElement(proposerIndex)
-	} else {
-		// Subsequent proposals use same k for registered tracker
-		kPrevProposal = proposerK
-	}
+// 	var kPrevProposal fr.Element
+// 	if isFirstProposal {
+// 		// On first proposal the k is computed deterministically and known to all
+// 		kPrevProposal = fr.NewElement(proposerIndex)
+// 	} else {
+// 		// Subsequent proposals use same k for registered tracker
+// 		kPrevProposal = proposerK
+// 	}
 
-	whiskOpeningProof, err := GenerateWhiskTrackerProof(state.proposerTracker, kPrevProposal, rand)
-	require.NoError(t, err)
+// 	whiskOpeningProof, err := GenerateWhiskTrackerProof(state.proposerTracker, kPrevProposal, rand)
+// 	require.NoError(t, err)
 
-	return &Block{
-		whiskOpeningProof,
-		whiskPostShuffleTrackers,
-		whiskShuffleProof,
-		whiskRegistrationProof,
-		whiskTracker,
-		whiskKCommitment,
-	}
-}
+// 	return &Block{
+// 		whiskOpeningProof,
+// 		whiskPostShuffleTrackers,
+// 		whiskShuffleProof,
+// 		whiskRegistrationProof,
+// 		whiskTracker,
+// 		whiskKCommitment,
+// 	}
+// }
